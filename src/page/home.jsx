@@ -9,7 +9,10 @@ import LoadingSpinner from "../components/LoadingSpinner";
 export default function Home() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showAddFriend, setShowAddFriend] = useState(false);
   const [editName, setEditName] = useState("");
+  const [friendEmail, setFriendEmail] = useState("");
+  const [friends, setFriends] = useState([]);
   
   const { user, logout, updateUser, loading } = useAuth();
   const navigate = useNavigate();
@@ -23,8 +26,29 @@ export default function Home() {
   useEffect(() => {
     if (user) {
       setEditName(user.name);
+    
+      loadFriends();
     }
   }, [user]);
+
+  const loadFriends = () => {
+    try {
+      const savedFriends = localStorage.getItem(`friends_${user?.id}`);
+      if (savedFriends) {
+        setFriends(JSON.parse(savedFriends));
+      }
+    } catch (error) {
+      console.error('Erro ao carregar amigos:', error);
+    }
+  };
+
+  const saveFriends = (friendsList) => {
+    try {
+      localStorage.setItem(`friends_${user.id}`, JSON.stringify(friendsList));
+    } catch (error) {
+      console.error('Erro ao salvar amigos:', error);
+    }
+  };
 
   if (!user) {
     return (
@@ -51,6 +75,61 @@ export default function Home() {
     const result = await updateUser({ name: editName.trim() });
     if (result.success) {
       setShowEditProfile(false);
+    }
+  };
+
+  const handleAddFriend = async (e) => {
+    e.preventDefault();
+    
+    if (!friendEmail.trim()) {
+      alert("Por favor, digite o email do amigo!");
+      return;
+    }
+
+  
+    if (friends.some(friend => friend.email === friendEmail.toLowerCase())) {
+      alert("Este usuário já está na sua lista de amigos!");
+      return;
+    }
+
+  
+    if (friendEmail.toLowerCase() === user.email) {
+      alert("Você não pode adicionar a si mesmo como amigo!");
+      return;
+    }
+
+  
+    const allUsers = JSON.parse(localStorage.getItem('termo_duelo_users') || '[]');
+    const friendUser = allUsers.find(u => u.email === friendEmail.toLowerCase());
+
+    if (!friendUser) {
+      alert("Usuário não encontrado! Verifique o email digitado.");
+      return;
+    }
+
+
+    const newFriend = {
+      id: friendUser.id,
+      name: friendUser.name,
+      email: friendUser.email,
+      addedAt: new Date().toISOString()
+    };
+
+    const updatedFriends = [...friends, newFriend];
+    setFriends(updatedFriends);
+    saveFriends(updatedFriends);
+    
+    setFriendEmail("");
+    setShowAddFriend(false);
+    alert(`Amigo ${friendUser.name} adicionado com sucesso!`);
+  };
+
+  const handleRemoveFriend = (friendId) => {
+    if (window.confirm("Tem certeza que deseja remover este amigo?")) {
+      const updatedFriends = friends.filter(friend => friend.id !== friendId);
+      setFriends(updatedFriends);
+      saveFriends(updatedFriends);
+      alert("Amigo removido com sucesso!");
     }
   };
 
@@ -154,6 +233,78 @@ export default function Home() {
     );
   }
 
+  if (showAddFriend) {
+    return (
+      <div style={{ ...styles.background, ...getGradientBackground() }}>
+        <Card title="Adicionar Amigo" className="animate-scaleIn">
+          <form onSubmit={handleAddFriend} style={styles.form}>
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>Email do Amigo</label>
+              <input
+                type="email"
+                value={friendEmail}
+                onChange={(e) => setFriendEmail(e.target.value)}
+                style={styles.input}
+                placeholder="Digite o email do amigo"
+                required
+              />
+            </div>
+            
+            <div style={styles.formButtons}>
+              <Button
+                type="submit"
+                variant="success"
+                size="md"
+                loading={loading}
+                style={{ marginRight: theme.spacing[3] }}
+              >
+                Adicionar Amigo
+              </Button>
+              
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                onClick={() => {
+                  setShowAddFriend(false);
+                  setFriendEmail("");
+                }}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </form>
+          
+          {friends.length > 0 && (
+            <div style={styles.friendsList}>
+              <h3 style={styles.friendsTitle}>Seus Amigos ({friends.length})</h3>
+              {friends.map(friend => (
+                <div key={friend.id} style={styles.friendItem}>
+                  <div style={styles.friendInfo}>
+                    <div style={styles.friendAvatar}>
+                      {getInitials(friend.name)}
+                    </div>
+                    <div>
+                      <div style={styles.friendName}>{friend.name}</div>
+                      <div style={styles.friendEmail}>{friend.email}</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleRemoveFriend(friend.id)}
+                    style={styles.removeButton}
+                    title="Remover amigo"
+                  >
+                    ❌
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div style={{ ...styles.background, ...getGradientBackground() }}>
       <Card className="animate-scaleIn">
@@ -214,6 +365,15 @@ export default function Home() {
           
           <Button
             variant="info"
+            size="md"
+            onClick={() => setShowAddFriend(true)}
+            style={styles.gameButton}
+          >
+            👥 Adicionar Amigo ({friends.length})
+          </Button>
+          
+          <Button
+            variant="secondary"
             size="md"
             onClick={() => alert("Ranking será implementado em breve!")}
             style={styles.gameButton}
@@ -374,5 +534,64 @@ const styles = {
     display: "flex",
     gap: theme.spacing[3],
     width: "100%"
+  },
+  friendsList: {
+    marginTop: theme.spacing[6],
+    paddingTop: theme.spacing[4],
+    borderTop: `1px solid ${theme.colors.white}20`
+  },
+  friendsTitle: {
+    color: theme.colors.white,
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.bold,
+    marginBottom: theme.spacing[4],
+    textAlign: "center"
+  },
+  friendItem: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: theme.spacing[3],
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    borderRadius: theme.borderRadius.base,
+    marginBottom: theme.spacing[2],
+    transition: "background-color 0.3s ease"
+  },
+  friendInfo: {
+    display: "flex",
+    alignItems: "center",
+    gap: theme.spacing[3]
+  },
+  friendAvatar: {
+    width: "40px",
+    height: "40px",
+    borderRadius: "50%",
+    backgroundColor: theme.colors.secondary.main,
+    color: theme.colors.white,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.bold
+  },
+  friendName: {
+    color: theme.colors.white,
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.medium
+  },
+  friendEmail: {
+    color: theme.colors.white,
+    fontSize: theme.typography.fontSize.sm,
+    opacity: 0.7
+  },
+  removeButton: {
+    background: "none",
+    border: "none",
+    color: theme.colors.danger,
+    cursor: "pointer",
+    fontSize: "16px",
+    padding: theme.spacing[1],
+    borderRadius: theme.borderRadius.sm,
+    transition: "background-color 0.3s ease"
   }
 };
