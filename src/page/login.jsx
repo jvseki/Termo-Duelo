@@ -21,7 +21,7 @@ export default function Login() {
   const { login, loading, error, clearError } = useAuth();
   const navigate = useNavigate();
 
-  // Limpar erros quando o usuário digita
+ 
   useEffect(() => {
     if (Object.keys(errors).length > 0) {
       setErrors({});
@@ -42,14 +42,14 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validar formulário
+  
     const validation = validateLoginForm(formData);
     if (!validation.isValid) {
       setErrors(validation.errors);
       return;
     }
 
-    // Tentar fazer login
+   
     const result = await login({
       ...formData,
       rememberMe
@@ -66,7 +66,7 @@ export default function Login() {
 
   const handleForgotPasswordSubmit = (e) => {
     e.preventDefault();
-    // Implementar lógica de recuperação de senha
+  
     alert("Funcionalidade de recuperação de senha será implementada em breve!");
     setShowForgotPassword(false);
   };
