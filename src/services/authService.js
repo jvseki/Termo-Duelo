@@ -193,6 +193,7 @@ export const register = async (userData) => {
       email: sanitizedEmail,
       password: hashPassword(password),
       pontuacao: 0,
+      avatar: null, // caminho do avatar selecionado (opcional)
       createdAt: new Date().toISOString(),
       lastLogin: null,
       isActive: true
@@ -278,7 +279,8 @@ export const login = async (credentials) => {
       id: user.id,
       name: user.name,
       email: user.email,
-      pontuacao: user.pontuacao
+      pontuacao: user.pontuacao,
+      avatar: user.avatar || null
     };
     
     // Salvar sessão
@@ -362,7 +364,7 @@ export const updateUser = async (updates) => {
     }
     
     // Atualizar dados permitidos
-    const allowedUpdates = ['name', 'pontuacao'];
+    const allowedUpdates = ['name', 'pontuacao', 'avatar'];
     const updatedUser = { ...users[userIndex] };
     
     Object.keys(updates).forEach(key => {
@@ -386,7 +388,8 @@ export const updateUser = async (updates) => {
       id: updatedUser.id,
       name: updatedUser.name,
       email: updatedUser.email,
-      pontuacao: updatedUser.pontuacao
+      pontuacao: updatedUser.pontuacao,
+      avatar: updatedUser.avatar || null
     };
     
     const token = localStorage.getItem(STORAGE_KEYS.SESSION_TOKEN);

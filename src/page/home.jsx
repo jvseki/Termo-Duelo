@@ -5,12 +5,17 @@ import { getGradientBackground, theme } from "../styles/theme";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import LoadingSpinner from "../components/LoadingSpinner";
+import esqueleto from "../assets/esqueleto.png";
+import robo from "../assets/robo.png";
+import roqueira from "../assets/roqueira.png";
+import skatista from "../assets/skatista.png";
 
 export default function Home() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [editName, setEditName] = useState("");
+  const [editAvatar, setEditAvatar] = useState(null);
   const [friendEmail, setFriendEmail] = useState("");
   const [friends, setFriends] = useState([]);
   
@@ -26,6 +31,7 @@ export default function Home() {
   useEffect(() => {
     if (user) {
       setEditName(user.name);
+      setEditAvatar(user.avatar || null);
     
       loadFriends();
     }
@@ -67,12 +73,12 @@ export default function Home() {
 
   const handleEditProfile = async (e) => {
     e.preventDefault();
-    if (editName.trim() === user.name) {
+    if (editName.trim() === user.name && (editAvatar || null) === (user.avatar || null)) {
       setShowEditProfile(false);
       return;
     }
 
-    const result = await updateUser({ name: editName.trim() });
+    const result = await updateUser({ name: editName.trim(), avatar: editAvatar || null });
     if (result.success) {
       setShowEditProfile(false);
     }
@@ -187,9 +193,15 @@ export default function Home() {
         <Card title="Editar Perfil" className="animate-scaleIn">
           <form onSubmit={handleEditProfile} style={styles.form}>
             <div style={styles.avatarContainer}>
-              <div style={styles.avatar}>
-                {getInitials(editName)}
+            <div style={styles.avatar}>
+              <div style={styles.avatarClip}>
+                {editAvatar ? (
+                  <img src={editAvatar} alt="Avatar" style={styles.avatarImage} />
+                ) : (
+                  <span style={styles.avatarInitials}>{getInitials(editName)}</span>
+                )}
               </div>
+            </div>
             </div>
             
             <div style={styles.inputGroup}>
@@ -202,6 +214,20 @@ export default function Home() {
                 required
                 maxLength={50}
               />
+            </div>
+
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>Avatar</label>
+              <div style={styles.avatarGrid}>
+                <button type="button" onClick={() => setEditAvatar(null)} style={{ ...styles.avatarOption, ...(editAvatar === null ? styles.avatarOptionActive : {}) }} title="Sem avatar">
+                  <span style={styles.noAvatarIcon}>Ø</span>
+                </button>
+                {[esqueleto, robo, roqueira, skatista].map((img, idx) => (
+                  <button key={idx} type="button" onClick={() => setEditAvatar(img)} style={{ ...styles.avatarOption, ...(editAvatar === img ? styles.avatarOptionActive : {}) }}>
+                    <img src={img} alt={`Avatar ${idx + 1}`} style={styles.avatarThumb} />
+                  </button>
+                ))}
+              </div>
             </div>
             
             <div style={styles.formButtons}>
@@ -222,6 +248,7 @@ export default function Home() {
                 onClick={() => {
                   setShowEditProfile(false);
                   setEditName(user.name);
+                  setEditAvatar(user.avatar || null);
                 }}
               >
                 Cancelar
@@ -311,7 +338,13 @@ export default function Home() {
         <div style={styles.header}>
           <div style={styles.avatarContainer}>
             <div style={styles.avatar}>
-              {getInitials(user.name)}
+              <div style={styles.avatarClip}>
+                {user.avatar ? (
+                  <img src={user.avatar} alt="Avatar" style={styles.avatarImage} />
+                ) : (
+                  <span style={styles.avatarInitials}>{getInitials(user.name)}</span>
+                )}
+              </div>
             </div>
             <button
               onClick={() => setShowEditProfile(true)}
@@ -426,7 +459,33 @@ const styles = {
     fontSize: theme.typography.fontSize['2xl'],
     fontWeight: theme.typography.fontWeight.bold,
     boxShadow: theme.shadows.lg,
-    margin: "0 auto"
+    margin: "0 auto",
+    position: "relative",
+    border: `4px solid ${theme.colors.secondary.main}` // anel externo
+  },
+  avatarClip: {
+    width: "100%",
+    height: "100%",
+    borderRadius: "50%",
+    overflow: "hidden",
+    // pequeno padding cria o anel interno visível
+    padding: "3px",
+    boxSizing: "border-box",
+    backgroundColor: theme.colors.black || "#000"
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: "50%",
+    objectFit: "cover",
+    display: "block"
+  },
+  avatarInitials: {
+    width: "100%",
+    height: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center"
   },
   editButton: {
     position: "absolute",
@@ -534,6 +593,41 @@ const styles = {
     display: "flex",
     gap: theme.spacing[3],
     width: "100%"
+  },
+  avatarGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(5, 56px)",
+    gap: theme.spacing[2],
+    justifyContent: "center"
+  },
+  avatarOption: {
+    width: "56px",
+    height: "56px",
+    borderRadius: theme.borderRadius.full || "50%",
+    overflow: "hidden",
+    border: `2px solid ${theme.colors.white}40`,
+    background: "transparent",
+    cursor: "pointer",
+    padding: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "all 0.2s ease",
+    position: "relative"
+  },
+  avatarOptionActive: {
+    borderColor: theme.colors.secondary.main,
+    boxShadow: theme.shadows.md
+  },
+  avatarThumb: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    display: "block"
+  },
+  noAvatarIcon: {
+    color: theme.colors.white,
+    fontWeight: theme.typography.fontWeight.bold
   },
   friendsList: {
     marginTop: theme.spacing[6],
