@@ -9,6 +9,15 @@ import esqueleto from "../assets/esqueleto.png";
 import robo from "../assets/robo.png";
 import roqueira from "../assets/roqueira.png";
 import skatista from "../assets/skatista.png";
+import alien from "../assets/alien.png";
+import dino from "../assets/dino.png";
+import eagle from "../assets/eagle.png";
+import frango from "../assets/frango.png";
+import macaco from "../assets/macaco.png";
+import re from "../assets/re.png";
+import Seki from "../assets/Seki.png";
+import urso from "../assets/urso.png";
+import zombie from "../assets/zombie.png";
 
 export default function Home() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -222,7 +231,7 @@ export default function Home() {
                 <button type="button" onClick={() => setEditAvatar(null)} style={{ ...styles.avatarOption, ...(editAvatar === null ? styles.avatarOptionActive : {}) }} title="Sem avatar">
                   <span style={styles.noAvatarIcon}>Ø</span>
                 </button>
-                {[esqueleto, robo, roqueira, skatista].map((img, idx) => (
+                {[esqueleto, robo, roqueira, skatista, alien, dino, eagle, frango, macaco, re, Seki, urso, zombie].map((img, idx) => (
                   <button key={idx} type="button" onClick={() => setEditAvatar(img)} style={{ ...styles.avatarOption, ...(editAvatar === img ? styles.avatarOptionActive : {}) }}>
                     <img src={img} alt={`Avatar ${idx + 1}`} style={styles.avatarThumb} />
                   </button>
@@ -461,14 +470,14 @@ const styles = {
     boxShadow: theme.shadows.lg,
     margin: "0 auto",
     position: "relative",
-    border: `4px solid ${theme.colors.secondary.main}` // anel externo
+    border: `4px solid ${theme.colors.secondary.main}` 
   },
   avatarClip: {
     width: "100%",
     height: "100%",
     borderRadius: "50%",
     overflow: "hidden",
-    // pequeno padding cria o anel interno visível
+    
     padding: "3px",
     boxSizing: "border-box",
     backgroundColor: theme.colors.black || "#000"
@@ -598,7 +607,9 @@ const styles = {
     display: "grid",
     gridTemplateColumns: "repeat(5, 56px)",
     gap: theme.spacing[2],
-    justifyContent: "center"
+    justifyContent: "center",
+    maxWidth: "320px",
+    margin: "0 auto"
   },
   avatarOption: {
     width: "56px",
