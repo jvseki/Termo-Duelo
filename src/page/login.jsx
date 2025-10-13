@@ -21,7 +21,6 @@ export default function Login() {
   const { login, loading, error, clearError } = useAuth();
   const navigate = useNavigate();
 
- 
   useEffect(() => {
     if (Object.keys(errors).length > 0) {
       setErrors({});
@@ -41,15 +40,13 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-  
+
     const validation = validateLoginForm(formData);
     if (!validation.isValid) {
       setErrors(validation.errors);
       return;
     }
 
-   
     const result = await login({
       ...formData,
       rememberMe
@@ -66,7 +63,6 @@ export default function Login() {
 
   const handleForgotPasswordSubmit = (e) => {
     e.preventDefault();
-  
     alert("Funcionalidade de recuperação de senha será implementada em breve!");
     setShowForgotPassword(false);
   };
@@ -86,7 +82,6 @@ export default function Login() {
               error={errors.email}
               required
             />
-            
             <div style={styles.buttonGroup}>
               <Button
                 type="submit"
@@ -97,7 +92,7 @@ export default function Login() {
               >
                 Enviar Link de Recuperação
               </Button>
-              
+
               <Button
                 type="button"
                 variant="secondary"
@@ -135,7 +130,7 @@ export default function Login() {
             error={errors.email}
             required
           />
-          
+
           <Input
             type="password"
             name="password"
@@ -146,7 +141,7 @@ export default function Login() {
             error={errors.password}
             required
           />
-          
+
           <div style={styles.optionsContainer}>
             <label style={styles.checkboxLabel}>
               <input
@@ -157,7 +152,7 @@ export default function Login() {
               />
               Lembrar-me
             </label>
-            
+
             <button
               type="button"
               onClick={handleForgotPassword}
@@ -166,22 +161,27 @@ export default function Login() {
               Esqueci minha senha
             </button>
           </div>
-          
-          <Button
+
+          {/* BOTÃO VERMELHO */}
+          <button
             type="submit"
-            variant="primary"
-            size="lg"
-            loading={loading}
-            style={{ marginBottom: theme.spacing[4] }}
+            disabled={loading}
+            style={{
+              ...styles.redButton,
+              opacity: loading ? 0.8 : 1,
+              cursor: loading ? "not-allowed" : "pointer"
+            }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#b71c1c"}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#d32f2f"}
           >
             {loading ? "Entrando..." : "Entrar"}
-          </Button>
+          </button>
         </form>
-        
+
         <div style={styles.divider}>
           <span style={styles.dividerText}>ou</span>
         </div>
-        
+
         <Button
           type="button"
           variant="success"
@@ -253,5 +253,16 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: theme.spacing[2]
+  },
+  redButton: {
+    backgroundColor: "#d32f2f",   
+    color: "white",
+    padding: "12px",
+    border: "none",
+    borderRadius: "8px",
+    fontSize: "16px",
+    fontWeight: "bold",
+    transition: "background-color 0.3s ease",
+    marginBottom: theme.spacing[4]
   }
 };
