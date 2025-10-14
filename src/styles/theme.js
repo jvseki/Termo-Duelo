@@ -2,33 +2,43 @@
 export const theme = {
   colors: {
     primary: {
-      main: '#6a11cb',
-      light: '#8e44db',
-      dark: '#4a0da0',
-      gradient: 'linear-gradient(270deg, #6a11cb, #2575fc)'
+      main: '#2563eb', // Azul profissional
+      light: '#3b82f6',
+      dark: '#1d4ed8',
+      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
     },
     secondary: {
-      main: '#2575fc',
-      light: '#4a8fff',
-      dark: '#1850c9'
+      main: '#10b981', // Verde esmeralda
+      light: '#34d399',
+      dark: '#059669'
     },
-    success: '#4CAF50',
-    warning: '#ff9800',
-    danger: '#F44336',
-    info: '#2196F3',
+    accent: {
+      main: '#f59e0b', // Âmbar
+      light: '#fbbf24',
+      dark: '#d97706'
+    },
+    success: '#10b981',
+    warning: '#f59e0b',
+    danger: '#ef4444',
+    info: '#3b82f6',
     white: '#ffffff',
-    black: '#000000',
+    black: '#111827',
     gray: {
-      50: '#fafafa',
-      100: '#f5f5f5',
-      200: '#eeeeee',
-      300: '#e0e0e0',
-      400: '#bdbdbd',
-      500: '#9e9e9e',
-      600: '#757575',
-      700: '#616161',
-      800: '#424242',
-      900: '#212121'
+      50: '#f9fafb',
+      100: '#f3f4f6',
+      200: '#e5e7eb',
+      300: '#d1d5db',
+      400: '#9ca3af',
+      500: '#6b7280',
+      600: '#4b5563',
+      700: '#374151',
+      800: '#1f2937',
+      900: '#111827'
+    },
+    surface: {
+      primary: '#ffffff',
+      secondary: '#f8fafc',
+      tertiary: '#f1f5f9'
     }
   },
   
