@@ -109,15 +109,9 @@ export default function Ranking() {
             </button>
             <button 
               style={styles.navButton}
-              onClick={() => alert("Desafios serão implementados em breve!")}
+              onClick={() => navigate("/home")}
             >
-              Desafios
-            </button>
-            <button 
-              style={styles.navButton}
-              onClick={() => alert("Estatísticas serão implementadas em breve!")}
-            >
-              Estatísticas
+              Amigos
             </button>
           </nav>
           

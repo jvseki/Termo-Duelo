@@ -524,27 +524,13 @@ export default function Home() {
             </button>
             <button 
               style={styles.navButton}
-              onClick={() => alert("Desafios serão implementados em breve!")}
+              onClick={() => setShowFriendsList(true)}
             >
-              Desafios
-            </button>
-            <button 
-              style={styles.navButton}
-              onClick={() => alert("Estatísticas serão implementadas em breve!")}
-            >
-              Estatísticas
+              Amigos
             </button>
           </nav>
           
           <div style={styles.userSection}>
-            <button style={styles.notificationButton}>🔔</button>
-            <button 
-              style={styles.friendButton} 
-              onClick={() => setShowFriendsList(true)}
-              title="Ver lista de amigos"
-            >
-              👥
-            </button>
             <div style={styles.userProfileContainer} data-profile-dropdown>
               <div 
                 style={styles.userProfile}
@@ -687,26 +673,6 @@ export default function Home() {
             </button>
         </div>
 
-          {/* Conquistas */}
-          <div style={styles.achievementsCard}>
-            <h3 style={styles.cardTitle}>Conquistas Recentes</h3>
-            
-            <div style={styles.achievementItem}>
-              <div style={styles.achievementIcon}>⭐</div>
-              <div style={styles.achievementContent}>
-                <h4 style={styles.achievementTitle}>Sequência de 7 dias!</h4>
-                <p style={styles.achievementDescription}>Continue assim para desbloquear mais recompensas</p>
-        </div>
-            </div>
-            
-            <div style={styles.achievementItem}>
-              <div style={styles.achievementIcon}>✅</div>
-              <div style={styles.achievementContent}>
-                <h4 style={styles.achievementTitle}>100 Jogos Completos</h4>
-                <p style={styles.achievementDescription}>Parabéns pela dedicação!</p>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -1279,30 +1245,6 @@ const styles = {
       transform: "none"
     }
   },
-  notificationButton: {
-    background: "none",
-    border: "none",
-    fontSize: "20px",
-    cursor: "pointer",
-    padding: theme.spacing[2],
-    borderRadius: theme.borderRadius.base,
-    transition: "background-color 0.3s ease",
-    "&:hover": {
-      backgroundColor: "rgba(255, 255, 255, 0.1)"
-    }
-  },
-  friendButton: {
-    background: "none",
-    border: "none",
-    fontSize: "20px",
-    cursor: "pointer",
-    padding: theme.spacing[2],
-    borderRadius: theme.borderRadius.base,
-    transition: "background-color 0.3s ease",
-    "&:hover": {
-      backgroundColor: "rgba(255, 255, 255, 0.1)"
-    }
-  },
   userProfile: {
     display: "flex",
     alignItems: "center",
@@ -1552,50 +1494,6 @@ const styles = {
       transform: "translateY(-1px)",
       boxShadow: theme.shadows.md
     }
-  },
-  achievementsCard: {
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing[6],
-    boxShadow: theme.shadows.lg
-  },
-  achievementItem: {
-    display: "flex",
-    alignItems: "center",
-    gap: theme.spacing[3],
-    padding: theme.spacing[3],
-    backgroundColor: theme.colors.surface.tertiary,
-    borderRadius: theme.borderRadius.base,
-    marginBottom: theme.spacing[3],
-    "&:last-child": {
-      marginBottom: 0
-    }
-  },
-  achievementIcon: {
-    fontSize: "24px",
-    width: "40px",
-    height: "40px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: theme.colors.primary.main,
-    borderRadius: "50%",
-    color: theme.colors.white
-  },
-  achievementContent: {
-    flex: 1
-  },
-  achievementTitle: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.gray[900],
-    margin: 0,
-    marginBottom: theme.spacing[1]
-  },
-  achievementDescription: {
-    fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.gray[600],
-    margin: 0
   },
   avatarImage: {
     width: "100%",
