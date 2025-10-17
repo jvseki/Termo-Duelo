@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { getGradientBackground, theme } from "../styles/theme";
-import Card from "../components/Card";
-import Button from "../components/Button";
 import LoadingSpinner from "../components/LoadingSpinner";
 import esqueleto from "../assets/esqueleto.png";
 import robo from "../assets/robo.png";
