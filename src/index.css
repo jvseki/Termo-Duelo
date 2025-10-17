@@ -1,10 +1,29 @@
 @import './styles/animations.css';
 
+/* 🌈 Variáveis Globais de Cor */
+:root {
+  --tela-fundo: #8A2BE2;
+  --secundaria: #FF69B4;
+  --mensagem: #FFB6C1;
+  --oponente01: #00FF00;
+  --oponente02: #DC143C;
+  --time: #DC143C;
+}
+
 body {
   margin: 0;
   padding: 0;
   font-family: "Inter", "Segoe UI", "Roboto", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f8fafc;
+
+  /* ✨ Aqui você já pode usar a variável global */
+  background-color: var(--tela-fundo);
+  color: white;
+}
+
+/* Animação para o spinner de loading */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }

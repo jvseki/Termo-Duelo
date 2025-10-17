@@ -29,6 +29,7 @@ export default function Home() {
   const [editAvatar, setEditAvatar] = useState(null);
   const [friendEmail, setFriendEmail] = useState("");
   const [friends, setFriends] = useState([]);
+  const [activeRankingTab, setActiveRankingTab] = useState("daily");
   
   const { user, logout, updateUser, loading } = useAuth();
   const navigate = useNavigate();
@@ -517,7 +518,7 @@ export default function Home() {
             </button>
             <button 
               style={styles.navButton}
-              onClick={() => alert("Ranking será implementado em breve!")}
+              onClick={() => navigate("/ranking")}
             >
               Ranking
             </button>
@@ -659,10 +660,31 @@ export default function Home() {
           <div style={styles.rankingCard}>
             <h3 style={styles.cardTitle}>Ranking</h3>
             <div style={styles.rankingTabs}>
-              <button style={styles.tabButton}>Diário</button>
-              <button style={styles.tabButton}>Semanal</button>
+              <button 
+                style={{
+                  ...styles.tabButton,
+                  ...(activeRankingTab === "daily" ? styles.activeTabButton : {})
+                }}
+                onClick={() => setActiveRankingTab("daily")}
+              >
+                Diário
+              </button>
+              <button 
+                style={{
+                  ...styles.tabButton,
+                  ...(activeRankingTab === "weekly" ? styles.activeTabButton : {})
+                }}
+                onClick={() => setActiveRankingTab("weekly")}
+              >
+                Semanal
+              </button>
             </div>
-            <button style={styles.rankingButton}>Ver Ranking Completo</button>
+            <button 
+              style={styles.rankingButton}
+              onClick={() => navigate("/ranking")}
+            >
+              Ver Ranking Completo
+            </button>
         </div>
 
           {/* Conquistas */}
@@ -1504,6 +1526,14 @@ const styles = {
     "&:hover": {
       borderColor: theme.colors.primary.main,
       color: theme.colors.primary.main
+    }
+  },
+  activeTabButton: {
+    borderColor: theme.colors.primary.main,
+    backgroundColor: theme.colors.primary.main,
+    color: theme.colors.white,
+    "&:hover": {
+      backgroundColor: theme.colors.primary.dark
     }
   },
   rankingButton: {
