@@ -599,16 +599,16 @@ export default function Home() {
             
             <div style={styles.statsGrid}>
               <div style={styles.statCard}>
-                <span style={styles.statNumber}>156</span>
-                <span style={styles.statLabel}>Jogos</span>
+              <span style={styles.statNumber}>156</span>
+              <span style={styles.statLabel}>Jogos Jogados</span>
               </div>
               <div style={styles.statCard}>
-                <span style={styles.statNumber}>87%</span>
-              <span style={styles.statLabel}>Vitórias</span>
+              <span style={styles.statNumber}>87%</span>
+              <span style={styles.statLabel}>% de Vitória</span>
             </div>
               <div style={styles.statCard}>
-                <span style={styles.statNumber}>7</span>
-                <span style={styles.statLabel}>Sequência</span>
+              <span style={styles.statNumber}>1200</span>
+              <span style={styles.statLabel}>Pontuação</span>
             </div>
           </div>
         </div>
@@ -652,15 +652,6 @@ export default function Home() {
                 onClick={() => setActiveRankingTab("daily")}
               >
                 Diário
-              </button>
-              <button 
-                style={{
-                  ...styles.tabButton,
-                  ...(activeRankingTab === "weekly" ? styles.activeTabButton : {})
-                }}
-                onClick={() => setActiveRankingTab("weekly")}
-              >
-                Semanal
               </button>
             </div>
             <button 

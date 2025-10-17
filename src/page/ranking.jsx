@@ -4,7 +4,6 @@ import { useAuth } from "../contexts/AuthContext";
 import { theme } from "../styles/theme";
 
 export default function Ranking() {
-  const [activeTab, setActiveTab] = useState("daily");
   const [rankingData, setRankingData] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -17,7 +16,7 @@ export default function Ranking() {
       return;
     }
     loadRankingData();
-  }, [user, navigate, activeTab]);
+  }, [user, navigate]);
 
   const loadRankingData = () => {
     setLoading(true);
@@ -138,27 +137,7 @@ export default function Ranking() {
             <p style={styles.subtitle}>Veja como você se compara com outros jogadores</p>
           </div>
 
-          {/* Tabs */}
-          <div style={styles.tabsContainer}>
-            <button 
-              style={{
-                ...styles.tabButton,
-                ...(activeTab === "daily" ? styles.activeTabButton : {})
-              }}
-              onClick={() => setActiveTab("daily")}
-            >
-              📅 Diário
-            </button>
-            <button 
-              style={{
-                ...styles.tabButton,
-                ...(activeTab === "weekly" ? styles.activeTabButton : {})
-              }}
-              onClick={() => setActiveTab("weekly")}
-            >
-              📊 Semanal
-            </button>
-          </div>
+          {/* Single ranking - no tabs */}
 
           {/* Ranking do usuário atual */}
           {getCurrentUserRank() && (
