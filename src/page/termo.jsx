@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const PALAVRA_CERTA = "LIMAO";
 const MAX_TENTATIVAS = 5;
@@ -7,7 +8,8 @@ export default function Termo() {
   const [tentativas, setTentativas] = useState([]);
   const [entrada, setEntrada] = useState("");
   const [ganhou, setGanhou] = useState(false);
-
+  
+  const navigate = useNavigate();
   const palavra = PALAVRA_CERTA.toUpperCase();
   const gameOver = ganhou || tentativas.length >= MAX_TENTATIVAS;
 
@@ -68,8 +70,44 @@ export default function Termo() {
         alignItems: "center", // centraliza horizontal
         gap: 24,
         padding: 20,
+        position: "relative",
       }}
     >
+      {/* Botão Voltar para Home */}
+      <button
+        onClick={() => navigate("/home")}
+        style={{
+          position: "absolute",
+          top: 24,
+          left: 24,
+          backgroundColor: "#3b82f6",
+          color: "#fff",
+          padding: "12px 24px",
+          borderRadius: 12,
+          border: "none",
+          cursor: "pointer",
+          fontSize: 16,
+          fontWeight: 600,
+          boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
+          transition: "all 0.2s ease",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          zIndex: 10,
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = "#2563eb";
+          e.currentTarget.style.transform = "translateY(-2px)";
+          e.currentTarget.style.boxShadow = "0 6px 16px rgba(59, 130, 246, 0.4)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = "#3b82f6";
+          e.currentTarget.style.transform = "translateY(0)";
+          e.currentTarget.style.boxShadow = "0 4px 12px rgba(59, 130, 246, 0.3)";
+        }}
+      >
+        ← Voltar para Home
+      </button>
       {/* Painel principal branco */}
       <div
         style={{
