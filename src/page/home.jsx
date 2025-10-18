@@ -627,11 +627,11 @@ export default function Home() {
               </div>
             </button>
             
-            <button style={{...styles.gameModeButton, backgroundColor: '#f59e0b'}} onClick={() => alert("Modo Multiplayer será implementado em breve!")}>
+            <button style={{...styles.gameModeButton, backgroundColor: '#f59e0b'}} onClick={() => navigate("/termoduelo")}>
               <div style={styles.gameModeContent}>
                 <div style={styles.gameModeText}>
                   <h4 style={styles.gameModeTitle}>Modo Multiplayer</h4>
-                  <p style={styles.gameModeDescription}>Em breve - Desafie seus amigos</p>
+                  <p style={styles.gameModeDescription}>Desafie seus amigos</p>
                 </div>
                 <div style={styles.gameModeIcon}>👥</div>
               </div>
