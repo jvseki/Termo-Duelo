@@ -4,6 +4,7 @@ import Login from "./page/login";
 import Register from "./page/register";
 import Home from "./page/home";
 import Ranking from "./page/ranking";
+import Termo from "./page/termo"; // 👈 Importando o Termo.jsx
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/home" element={<Home />} />
           <Route path="/ranking" element={<Ranking />} />
+          <Route path="/termo" element={<Termo />} /> {/* 👈 Nova rota para o jogo */}
         </Routes>
       </Router>
     </AuthProvider>

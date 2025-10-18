@@ -617,7 +617,7 @@ export default function Home() {
           <div style={styles.gameModesSection}>
             <h3 style={styles.sectionTitle}>Modos de Jogo</h3>
             
-            <button style={styles.gameModeButton} onClick={() => alert("Modo Solo será implementado em breve!")}>
+            <button style={styles.gameModeButton} onClick={() => navigate('/termo')}>
               <div style={styles.gameModeContent}>
                 <div style={styles.gameModeText}>
                   <h4 style={styles.gameModeTitle}>Jogo Solo</h4>
