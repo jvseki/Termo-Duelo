@@ -27,7 +27,6 @@ export default function Home() {
   const [editAvatar, setEditAvatar] = useState(null);
   const [friendEmail, setFriendEmail] = useState("");
   const [friends, setFriends] = useState([]);
-  const [activeRankingTab, setActiveRankingTab] = useState("daily");
   
   const { user, logout, updateUser, loading } = useAuth();
   const navigate = useNavigate();
@@ -643,17 +642,6 @@ export default function Home() {
           {/* Ranking */}
           <div style={styles.rankingCard}>
             <h3 style={styles.cardTitle}>Ranking</h3>
-            <div style={styles.rankingTabs}>
-              <button 
-                style={{
-                  ...styles.tabButton,
-                  ...(activeRankingTab === "daily" ? styles.activeTabButton : {})
-                }}
-                onClick={() => setActiveRankingTab("daily")}
-              >
-                Diário
-              </button>
-            </div>
             <button 
               style={styles.rankingButton}
               onClick={() => navigate("/ranking")}
@@ -1439,33 +1427,6 @@ const styles = {
     color: theme.colors.gray[900],
     margin: 0,
     marginBottom: theme.spacing[4]
-  },
-  rankingTabs: {
-    display: "flex",
-    gap: theme.spacing[2],
-    marginBottom: theme.spacing[4]
-  },
-  tabButton: {
-    flex: 1,
-    padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
-    border: `2px solid ${theme.colors.gray[200]}`,
-    backgroundColor: theme.colors.white,
-    color: theme.colors.gray[600],
-    borderRadius: theme.borderRadius.base,
-    cursor: "pointer",
-    transition: "all 0.3s ease",
-    "&:hover": {
-      borderColor: theme.colors.primary.main,
-      color: theme.colors.primary.main
-    }
-  },
-  activeTabButton: {
-    borderColor: theme.colors.primary.main,
-    backgroundColor: theme.colors.primary.main,
-    color: theme.colors.white,
-    "&:hover": {
-      backgroundColor: theme.colors.primary.dark
-    }
   },
   rankingButton: {
     width: "100%",

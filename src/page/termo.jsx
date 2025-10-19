@@ -48,15 +48,21 @@ export default function Termo() {
     setTentativas(novas);
     setEntrada("");
 
-    if (resultado.every((r) => r.cor === "green")) {
-      setGanhou(true);
-      alert("Parabéns! Você acertou a palavra.");
-      return;
-    }
+  if (resultado.every((r) => r.cor === "green")) {
+    setGanhou(true);
+    alert("Parabéns! Você acertou a palavra.");
+    setTimeout(() => {
+      navigate("/home");
+    }, 2000);
+    return;
+  }
 
-    if (novas.length >= MAX_TENTATIVAS) {
-      alert(`Tentativas esgotadas. A palavra era: ${palavra}.`);
-    }
+  if (novas.length >= MAX_TENTATIVAS) {
+    alert(`Tentativas esgotadas. A palavra era: ${palavra}.`);
+    setTimeout(() => {
+      navigate("/home");
+    }, 2000);
+  }
   };
 
   return (
