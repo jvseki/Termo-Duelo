@@ -1,4 +1,5 @@
-// Serviço de autenticação com localStorage
+// Serviço de autenticação com backend + localStorage
+import api from './api';
 import { validateEmailUniqueness, sanitizeString } from '../utils/validators';
 
 // Chaves do localStorage
@@ -161,71 +162,33 @@ const clearSession = () => {
 export const register = async (userData) => {
   try {
     const { name, email, password } = userData;
-    
-    // Sanitizar dados
-    const sanitizedName = sanitizeString(name);
-    const sanitizedEmail = sanitizeString(email).toLowerCase();
-    
-    // Validar dados básicos
-    if (!sanitizedName || !sanitizedEmail || !password) {
-      return {
-        success: false,
-        message: 'Todos os campos são obrigatórios'
-      };
-    }
-    
-    // Obter usuários existentes
-    const users = getUsers();
-    
-    // Verificar se email já existe
-    const emailValidation = validateEmailUniqueness(sanitizedEmail, users);
-    if (!emailValidation.isValid) {
-      return {
-        success: false,
-        message: emailValidation.message
-      };
-    }
-    
-    // Criar novo usuário
-    const newUser = {
-      id: Date.now().toString(),
-      name: sanitizedName,
-      email: sanitizedEmail,
-      password: hashPassword(password),
-      pontuacao: 0,
-      avatar: null, // caminho do avatar selecionado (opcional)
-      createdAt: new Date().toISOString(),
-      lastLogin: null,
-      isActive: true
+
+    const response = await api.post('/api/auth/register', {
+      name,
+      email,
+      password
+    });
+
+    const { token, user, message } = response.data;
+    const mappedUser = {
+      id: user.id,
+      name: user.nickname,
+      email: user.email,
+      avatar: null
     };
-    
-    // Adicionar usuário à lista
-    users.push(newUser);
-    
-    // Salvar no localStorage
-    if (!saveUsers(users)) {
-      return {
-        success: false,
-        message: 'Erro ao salvar dados do usuário'
-      };
-    }
-    
+
+    saveCurrentUser(mappedUser, token);
+
     return {
       success: true,
-      message: 'Usuário registrado com sucesso!',
-      user: {
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-        pontuacao: newUser.pontuacao
-      }
+      message: message || 'Usuário registrado com sucesso!',
+      user: mappedUser
     };
-    
   } catch (error) {
-    console.error('Erro no registro:', error);
+    const apiMessage = error?.response?.data?.message;
     return {
       success: false,
-      message: 'Erro interno do servidor'
+      message: apiMessage || 'Erro ao registrar usuário'
     };
   }
 };
@@ -237,75 +200,33 @@ export const register = async (userData) => {
  */
 export const login = async (credentials) => {
   try {
-    const { email, password, rememberMe = false } = credentials;
-    
-    // Sanitizar email
-    const sanitizedEmail = sanitizeString(email).toLowerCase();
-    
-    // Validar dados básicos
-    if (!sanitizedEmail || !password) {
-      return {
-        success: false,
-        message: 'Email e senha são obrigatórios'
-      };
-    }
-    
-    // Obter usuários
-    const users = getUsers();
-    
-    // Buscar usuário por email
-    const user = users.find(u => u.email === sanitizedEmail && u.isActive);
-    
-    if (!user) {
-      return {
-        success: false,
-        message: 'Email ou senha incorretos'
-      };
-    }
-    
-    // Verificar senha
-    if (!verifyPassword(password, user.password)) {
-      return {
-        success: false,
-        message: 'Email ou senha incorretos'
-      };
-    }
-    
-    // Gerar token de sessão
-    const sessionToken = generateSessionToken();
-    
-    // Preparar dados do usuário para retorno
-    const userData = {
+    const { email, password } = credentials;
+
+    const response = await api.post('/api/auth/login', {
+      email,
+      password
+    });
+
+    const { token, user, message } = response.data;
+    const mappedUser = {
       id: user.id,
-      name: user.name,
+      name: user.nickname,
       email: user.email,
-      pontuacao: user.pontuacao,
       avatar: user.avatar || null
     };
-    
-    // Salvar sessão
-    if (!saveCurrentUser(userData, sessionToken)) {
-      return {
-        success: false,
-        message: 'Erro ao criar sessão'
-      };
-    }
-    
-    // Atualizar último login
-    user.lastLogin = new Date().toISOString();
-    saveUsers(users);
-    
+
+    saveCurrentUser(mappedUser, token);
+
     return {
       success: true,
-      message: 'Login realizado com sucesso!',
-      user: userData
+      message: message || 'Login realizado com sucesso!',
+      user: mappedUser
     };
-    
   } catch (error) {
-    console.error('Erro no login:', error);
+    const apiMessage = error?.response?.data?.message;
     return {
       success: false,
-      message: 'Erro interno do servidor'
+      message: apiMessage || 'Erro ao fazer login'
     };
   }
 };
