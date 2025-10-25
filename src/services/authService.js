@@ -161,14 +161,17 @@ const clearSession = () => {
  */
 export const register = async (userData) => {
   try {
+    console.log('🚀 Iniciando registro:', userData);
     const { name, email, password } = userData;
 
+    console.log('📤 Enviando requisição para:', 'http://localhost:3000/api/auth/register');
     const response = await api.post('/api/auth/register', {
       name,
       email,
       password
     });
 
+    console.log('✅ Resposta do backend:', response.data);
     const { token, user, message } = response.data;
     const mappedUser = {
       id: user.id,
@@ -177,6 +180,7 @@ export const register = async (userData) => {
       avatar: null
     };
 
+    console.log('👤 Usuário mapeado:', mappedUser);
     saveCurrentUser(mappedUser, token);
 
     return {
@@ -185,10 +189,20 @@ export const register = async (userData) => {
       user: mappedUser
     };
   } catch (error) {
+    console.error('❌ Erro no registro:', error);
+    console.error('📋 Detalhes do erro:', {
+      status: error?.response?.status,
+      statusText: error?.response?.statusText,
+      data: error?.response?.data,
+      message: error?.message
+    });
+    
     const apiMessage = error?.response?.data?.message;
+    const apiError = error?.response?.data?.error;
+    
     return {
       success: false,
-      message: apiMessage || 'Erro ao registrar usuário'
+      message: apiMessage || apiError || 'Erro ao registrar usuário'
     };
   }
 };
@@ -223,10 +237,13 @@ export const login = async (credentials) => {
       user: mappedUser
     };
   } catch (error) {
+    console.error('Login error:', error);
     const apiMessage = error?.response?.data?.message;
+    const apiError = error?.response?.data?.error;
+    
     return {
       success: false,
-      message: apiMessage || 'Erro ao fazer login'
+      message: apiMessage || apiError || 'Erro ao fazer login'
     };
   }
 };
@@ -260,6 +277,44 @@ export const getCurrentUserData = () => {
 };
 
 /**
+ * Busca dados do usuário no backend
+ * @returns {object} - { success: boolean, message: string, user?: object }
+ */
+export const fetchUserData = async () => {
+  try {
+    const response = await api.get('/api/auth/user');
+    const { user } = response.data;
+    
+    const mappedUser = {
+      id: user.id,
+      name: user.nickname,
+      email: user.email,
+      avatar: user.avatar || null,
+      status: user.status
+    };
+
+    // Atualizar dados no localStorage
+    const token = localStorage.getItem(STORAGE_KEYS.SESSION_TOKEN);
+    saveCurrentUser(mappedUser, token);
+
+    return {
+      success: true,
+      message: 'Dados do usuário carregados com sucesso!',
+      user: mappedUser
+    };
+  } catch (error) {
+    console.error('Fetch user data error:', error);
+    const apiMessage = error?.response?.data?.message;
+    const apiError = error?.response?.data?.error;
+    
+    return {
+      success: false,
+      message: apiMessage || apiError || 'Erro ao carregar dados do usuário'
+    };
+  }
+};
+
+/**
  * Atualiza dados do usuário
  * @param {object} updates - Dados para atualizar
  * @returns {object} - { success: boolean, message: string, user?: object }
@@ -274,52 +329,21 @@ export const updateUser = async (updates) => {
       };
     }
     
-    const users = getUsers();
-    const userIndex = users.findIndex(u => u.id === currentUser.id);
-    
-    if (userIndex === -1) {
-      return {
-        success: false,
-        message: 'Usuário não encontrado'
-      };
-    }
-    
-    // Atualizar dados permitidos
-    const allowedUpdates = ['name', 'pontuacao', 'avatar'];
-    const updatedUser = { ...users[userIndex] };
-    
-    Object.keys(updates).forEach(key => {
-      if (allowedUpdates.includes(key)) {
-        updatedUser[key] = sanitizeString(updates[key]) || updates[key];
-      }
-    });
-    
-    updatedUser.updatedAt = new Date().toISOString();
-    users[userIndex] = updatedUser;
-    
-    if (!saveUsers(users)) {
-      return {
-        success: false,
-        message: 'Erro ao salvar alterações'
-      };
-    }
-    
-    // Atualizar sessão atual
-    const newUserData = {
-      id: updatedUser.id,
-      name: updatedUser.name,
-      email: updatedUser.email,
-      pontuacao: updatedUser.pontuacao,
-      avatar: updatedUser.avatar || null
+    // Por enquanto, vamos atualizar apenas no localStorage
+    // Futuramente pode ser implementado endpoint no backend
+    const updatedUser = {
+      ...currentUser,
+      ...updates,
+      updatedAt: new Date().toISOString()
     };
     
     const token = localStorage.getItem(STORAGE_KEYS.SESSION_TOKEN);
-    saveCurrentUser(newUserData, token);
+    saveCurrentUser(updatedUser, token);
     
     return {
       success: true,
       message: 'Dados atualizados com sucesso!',
-      user: newUserData
+      user: updatedUser
     };
     
   } catch (error) {
@@ -372,5 +396,6 @@ export default {
   logout,
   getCurrentUserData,
   updateUser,
+  fetchUserData,
   isAuthenticated
 };
