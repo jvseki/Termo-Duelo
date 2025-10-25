@@ -160,34 +160,15 @@ export const AuthProvider = ({ children }) => {
       dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
       
       const result = await authService.register(userData);
-      
-      if (result.success) {
-        // Após registro bem-sucedido, fazer login automático
-        const loginResult = await authService.login({
-          email: userData.email,
-          password: userData.password
-        });
-        
-        if (loginResult.success) {
-          dispatch({ 
-            type: AUTH_ACTIONS.REGISTER_SUCCESS, 
-            payload: loginResult.user 
-          });
-          return { success: true, message: result.message };
-        } else {
-          dispatch({ 
-            type: AUTH_ACTIONS.SET_ERROR, 
-            payload: 'Registro realizado, mas erro no login automático' 
-          });
-          return { success: false, message: 'Registro realizado, mas erro no login automático' };
-        }
-      } else {
+        if (result.success) {
         dispatch({ 
-          type: AUTH_ACTIONS.SET_ERROR, 
-          payload: result.message 
+          type: AUTH_ACTIONS.REGISTER_SUCCESS, 
+          payload: result.user 
         });
-        return { success: false, message: result.message };
+        return { success: true, message: result.message };
       }
+      dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: result.message });
+      return { success: false, message: result.message };
     } catch (error) {
       console.error('Erro no registro:', error);
       const errorMessage = 'Erro interno do servidor';
