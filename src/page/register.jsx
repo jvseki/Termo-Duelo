@@ -62,6 +62,9 @@ export default function Register() {
 
     if (result.success) {
       navigate("/home");
+    } else {
+      // Mostrar erro se o registro falhar
+      alert(result.message || "Erro ao criar conta");
     }
   };
 
