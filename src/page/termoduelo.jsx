@@ -28,6 +28,7 @@ export default function TermoDuelo() {
     const [palavraAtual, setPalavraAtual] = useState("");
     const [letrasResultado, setLetrasResultado] = useState([]);
     const [jogoAtivo, setJogoAtivo] = useState(false);
+    const [gameResult, setGameResult] = useState(null);
     const gameTimerRef = useRef(null);
 
     useEffect(() => {
@@ -56,7 +57,7 @@ export default function TermoDuelo() {
 
         socket.on('game:inviteRejected', (data) => {
             setInvitePending(null);
-            alert('Convite de jogo rejeitado.');
+            console.log('Convite de jogo rejeitado.');
         });
 
         socket.on('game:inviteExpired', (data) => {
@@ -100,12 +101,18 @@ export default function TermoDuelo() {
         });
 
         socket.on('game:opponentLeft', () => {
-            alert('O adversário saiu do jogo.');
-            handleFimDoJogo();
+            console.log('O adversário saiu do jogo.');
+            setGameResult({
+                vencedor: "você",
+                pontuacaoJogador,
+                pontuacaoAdversario,
+                opponentName: opponent?.nickname || 'Adversário',
+                opponentLeft: true
+            });
         });
 
         socket.on('game:error', (data) => {
-            alert(data.message || 'Erro no jogo');
+            console.error('Erro no jogo:', data.message || 'Erro no jogo');
         });
 
         socket.on('user:online', (data) => {
@@ -157,12 +164,14 @@ export default function TermoDuelo() {
         if (telaAtual === "jogo" && jogoAtivo) {
             if (tempoRestante <= 0) {
                 setJogoAtivo(false);
-                const vencedor = pontuacaoJogador > pontuacaoAdversario ? "Você venceu!" : 
-                               pontuacaoJogador < pontuacaoAdversario ? `${opponent?.nickname || 'Adversário'} venceu!` : "Empate!";
-                alert(`⏳ Tempo esgotado! Resultado final:\nVocê: ${pontuacaoJogador}\n${opponent?.nickname || 'Adversário'}: ${pontuacaoAdversario}\n\n🏆 ${vencedor}`);
-                setTimeout(() => {
-                    handleFimDoJogo();
-                }, 2000);
+                const vencedor = pontuacaoJogador > pontuacaoAdversario ? "você" : 
+                               pontuacaoJogador < pontuacaoAdversario ? "adversário" : "empate";
+                setGameResult({
+                    vencedor,
+                    pontuacaoJogador,
+                    pontuacaoAdversario,
+                    opponentName: opponent?.nickname || 'Adversário'
+                });
                 return;
             }
             
@@ -190,7 +199,7 @@ export default function TermoDuelo() {
 
     const handleInviteFriend = (friendId) => {
         if (!socket || !isConnected) {
-            alert('Não conectado ao servidor');
+            console.error('Não conectado ao servidor');
             return;
         }
 
@@ -299,11 +308,200 @@ export default function TermoDuelo() {
         setEntrada("");
         setInvitePending(null);
         setReceivedInvite(null);
+        setGameResult(null);
         
         if (gameTimerRef.current) {
             clearInterval(gameTimerRef.current);
         }
     };
+
+    // Página de resultado do duelo
+    if (gameResult) {
+        const isWin = gameResult.vencedor === "você";
+        const isDraw = gameResult.vencedor === "empate";
+        
+        return (
+            <div
+                style={{
+                    minHeight: "100vh",
+                    backgroundColor: isWin 
+                        ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" 
+                        : isDraw
+                        ? "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)"
+                        : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    gap: 24,
+                    padding: 20,
+                    color: "#fff",
+                }}
+            >
+                <div
+                    style={{
+                        padding: 48,
+                        borderRadius: 20,
+                        background: "rgba(255, 255, 255, 0.95)",
+                        boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+                        width: "min(700px, 92vw)",
+                        textAlign: "center",
+                        color: "#1e293b",
+                    }}
+                >
+                    {/* Ícone de vitória/derrota/empate */}
+                    <div style={{ fontSize: 80, marginBottom: 24 }}>
+                        {isWin ? "🏆" : isDraw ? "🤝" : "😔"}
+                    </div>
+
+                    {/* Título */}
+                    <h1 style={{ 
+                        fontSize: 36, 
+                        fontWeight: "bold", 
+                        margin: "0 0 16px 0",
+                        color: isWin ? "#10b981" : isDraw ? "#f59e0b" : "#ef4444"
+                    }}>
+                        {isWin ? "Você Venceu!" : isDraw ? "Empate!" : "Você Perdeu!"}
+                    </h1>
+
+                    {/* Mensagem */}
+                    <p style={{ fontSize: 18, color: "#64748b", marginBottom: 32 }}>
+                        {gameResult.opponentLeft
+                            ? "O adversário saiu do jogo. Você venceu por W.O!"
+                            : isWin 
+                            ? "Parabéns! Você foi o melhor!"
+                            : isDraw
+                            ? "Foi uma partida equilibrada!"
+                            : `${gameResult.opponentName} foi o vencedor!`
+                        }
+                    </p>
+
+                    {/* Pontuação dos jogadores */}
+                    <div style={{
+                        display: "flex",
+                        justifyContent: "space-around",
+                        gap: 24,
+                        marginBottom: 32,
+                        flexWrap: "wrap"
+                    }}>
+                        {/* Sua pontuação */}
+                        <div style={{
+                            backgroundColor: "#f1f5f9",
+                            padding: 24,
+                            borderRadius: 16,
+                            flex: 1,
+                            minWidth: 200,
+                            border: `3px solid ${isWin ? "#10b981" : "#64748b"}`
+                        }}>
+                            <div style={{ fontSize: 14, color: "#64748b", marginBottom: 8 }}>
+                                Você
+                            </div>
+                            <div style={{ 
+                                fontSize: 48, 
+                                fontWeight: "bold", 
+                                color: isWin ? "#10b981" : "#64748b",
+                                marginBottom: 8
+                            }}>
+                                {gameResult.pontuacaoJogador}
+                            </div>
+                            <div style={{ fontSize: 14, color: "#64748b" }}>Pontos</div>
+                        </div>
+
+                        {/* VS */}
+                        <div style={{
+                            display: "flex",
+                            alignItems: "center",
+                            fontSize: 24,
+                            fontWeight: "bold",
+                            color: "#64748b"
+                        }}>
+                            VS
+                        </div>
+
+                        {/* Pontuação do adversário */}
+                        <div style={{
+                            backgroundColor: "#f1f5f9",
+                            padding: 24,
+                            borderRadius: 16,
+                            flex: 1,
+                            minWidth: 200,
+                            border: `3px solid ${!isWin && !isDraw ? "#ef4444" : "#64748b"}`
+                        }}>
+                            <div style={{ fontSize: 14, color: "#64748b", marginBottom: 8 }}>
+                                {gameResult.opponentName}
+                            </div>
+                            <div style={{ 
+                                fontSize: 48, 
+                                fontWeight: "bold", 
+                                color: !isWin && !isDraw ? "#ef4444" : "#64748b",
+                                marginBottom: 8
+                            }}>
+                                {gameResult.pontuacaoAdversario}
+                            </div>
+                            <div style={{ fontSize: 14, color: "#64748b" }}>Pontos</div>
+                        </div>
+                    </div>
+
+                    {/* Botões de ação */}
+                    <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+                        <button
+                            onClick={() => {
+                                handleFimDoJogo();
+                            }}
+                            style={{
+                                backgroundColor: "#3b82f6",
+                                color: "#fff",
+                                border: "none",
+                                padding: "14px 28px",
+                                borderRadius: 12,
+                                cursor: "pointer",
+                                fontSize: 16,
+                                fontWeight: 600,
+                                transition: "all 0.2s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = "#2563eb";
+                                e.currentTarget.style.transform = "translateY(-2px)";
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = "#3b82f6";
+                                e.currentTarget.style.transform = "translateY(0)";
+                            }}
+                        >
+                            🔄 Desafiar Novamente
+                        </button>
+                        <button
+                            onClick={() => {
+                                handleFimDoJogo();
+                                navigate("/home");
+                            }}
+                            style={{
+                                backgroundColor: "#64748b",
+                                color: "#fff",
+                                border: "none",
+                                padding: "14px 28px",
+                                borderRadius: 12,
+                                cursor: "pointer",
+                                fontSize: 16,
+                                fontWeight: 600,
+                                transition: "all 0.2s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = "#475569";
+                                e.currentTarget.style.transform = "translateY(-2px)";
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = "#64748b";
+                                e.currentTarget.style.transform = "translateY(0)";
+                            }}
+                        >
+                            🏠 Voltar para Home
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (!isConnected) {
         return (

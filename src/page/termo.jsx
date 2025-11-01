@@ -13,6 +13,7 @@ export default function Termo() {
   const [keywordId, setKeywordId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [finishing, setFinishing] = useState(false);
+  const [gameResult, setGameResult] = useState(null);
   
   const navigate = useNavigate();
   const gameOver = ganhou || tentativas.length >= MAX_TENTATIVAS;
@@ -29,12 +30,11 @@ export default function Termo() {
         setPalavra(result.keyword);
         setKeywordId(result.keywordId);
       } else {
-        alert(result.message || 'Erro ao carregar palavra. Tente novamente.');
+        console.error('Erro ao carregar palavra:', result.message);
         navigate("/home");
       }
     } catch (error) {
       console.error('Erro ao carregar palavra:', error);
-      alert('Erro ao carregar palavra. Tente novamente.');
       navigate("/home");
     } finally {
       setLoading(false);
@@ -56,26 +56,34 @@ export default function Termo() {
       });
 
       if (result.success) {
-        if (isWin) {
-          alert(`Parabéns! Você acertou a palavra.\nPontuação: ${result.game?.points || 0}\nXP ganho: ${result.game?.xp || 0}`);
-        } else {
-          alert(`Tentativas esgotadas. A palavra era: ${palavra}.\nXP ganho: ${result.game?.xp || 0}`);
-        }
-        setTimeout(() => {
-          navigate("/home");
-        }, 2000);
+        setGameResult({
+          isWin,
+          palavra,
+          tries,
+          points: result.game?.points || 0,
+          xp: result.game?.xp || 0,
+          game: result.game
+        });
       } else {
-        alert(result.message || 'Erro ao salvar resultado do jogo.');
-        setTimeout(() => {
-          navigate("/home");
-        }, 2000);
+        setGameResult({
+          isWin: false,
+          palavra,
+          tries: finalTries || tentativas.length,
+          points: 0,
+          xp: 0,
+          error: result.message || 'Erro ao salvar resultado do jogo.'
+        });
       }
     } catch (error) {
       console.error('Erro ao finalizar jogo:', error);
-      alert('Erro ao salvar resultado do jogo.');
-      setTimeout(() => {
-        navigate("/home");
-      }, 2000);
+      setGameResult({
+        isWin: false,
+        palavra,
+        tries: finalTries || tentativas.length,
+        points: 0,
+        xp: 0,
+        error: 'Erro ao salvar resultado do jogo.'
+      });
     } finally {
       setFinishing(false);
     }
@@ -175,6 +183,177 @@ export default function Termo() {
         >
           Voltar para Home
         </button>
+      </div>
+    );
+  }
+
+  // Página de resultado do jogo
+  if (gameResult) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          backgroundColor: gameResult.isWin ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: 24,
+          padding: 20,
+          color: "#fff",
+        }}
+      >
+        <div
+          style={{
+            padding: 48,
+            borderRadius: 20,
+            background: "rgba(255, 255, 255, 0.95)",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+            width: "min(600px, 92vw)",
+            textAlign: "center",
+            color: "#1e293b",
+          }}
+        >
+          {/* Ícone de vitória/derrota */}
+          <div style={{ fontSize: 80, marginBottom: 24 }}>
+            {gameResult.isWin ? "🎉" : "😔"}
+          </div>
+
+          {/* Título */}
+          <h1 style={{ 
+            fontSize: 36, 
+            fontWeight: "bold", 
+            margin: "0 0 16px 0",
+            color: gameResult.isWin ? "#10b981" : "#ef4444"
+          }}>
+            {gameResult.isWin ? "Parabéns!" : "Tentativas Esgotadas"}
+          </h1>
+
+          {/* Mensagem */}
+          <p style={{ fontSize: 18, color: "#64748b", marginBottom: 32 }}>
+            {gameResult.isWin 
+              ? `Você acertou a palavra em ${gameResult.tries} tentativa${gameResult.tries > 1 ? 's' : ''}!`
+              : `A palavra era: ${gameResult.palavra}`
+            }
+          </p>
+
+          {/* Estatísticas */}
+          <div style={{
+            display: "flex",
+            justifyContent: "space-around",
+            gap: 16,
+            marginBottom: 32,
+            flexWrap: "wrap"
+          }}>
+            <div style={{
+              backgroundColor: "#f1f5f9",
+              padding: 20,
+              borderRadius: 12,
+              flex: 1,
+              minWidth: 120
+            }}>
+              <div style={{ fontSize: 32, fontWeight: "bold", color: "#3b82f6", marginBottom: 8 }}>
+                {gameResult.points}
+              </div>
+              <div style={{ fontSize: 14, color: "#64748b" }}>Pontos</div>
+            </div>
+            <div style={{
+              backgroundColor: "#f1f5f9",
+              padding: 20,
+              borderRadius: 12,
+              flex: 1,
+              minWidth: 120
+            }}>
+              <div style={{ fontSize: 32, fontWeight: "bold", color: "#10b981", marginBottom: 8 }}>
+                {gameResult.xp}
+              </div>
+              <div style={{ fontSize: 14, color: "#64748b" }}>XP Ganho</div>
+            </div>
+            <div style={{
+              backgroundColor: "#f1f5f9",
+              padding: 20,
+              borderRadius: 12,
+              flex: 1,
+              minWidth: 120
+            }}>
+              <div style={{ fontSize: 32, fontWeight: "bold", color: "#f59e0b", marginBottom: 8 }}>
+                {gameResult.tries}/{MAX_TENTATIVAS}
+              </div>
+              <div style={{ fontSize: 14, color: "#64748b" }}>Tentativas</div>
+            </div>
+          </div>
+
+          {gameResult.error && (
+            <div style={{
+              backgroundColor: "#fee2e2",
+              color: "#dc2626",
+              padding: 12,
+              borderRadius: 8,
+              marginBottom: 24,
+              fontSize: 14
+            }}>
+              {gameResult.error}
+            </div>
+          )}
+
+          {/* Botões de ação */}
+          <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+            <button
+              onClick={() => {
+                setGameResult(null);
+                setTentativas([]);
+                setEntrada("");
+                setGanhou(false);
+                loadKeyword();
+              }}
+              style={{
+                backgroundColor: "#3b82f6",
+                color: "#fff",
+                border: "none",
+                padding: "14px 28px",
+                borderRadius: 12,
+                cursor: "pointer",
+                fontSize: 16,
+                fontWeight: 600,
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#2563eb";
+                e.currentTarget.style.transform = "translateY(-2px)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#3b82f6";
+                e.currentTarget.style.transform = "translateY(0)";
+              }}
+            >
+              🔄 Jogar Novamente
+            </button>
+            <button
+              onClick={() => navigate("/home")}
+              style={{
+                backgroundColor: "#64748b",
+                color: "#fff",
+                border: "none",
+                padding: "14px 28px",
+                borderRadius: 12,
+                cursor: "pointer",
+                fontSize: 16,
+                fontWeight: 600,
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#475569";
+                e.currentTarget.style.transform = "translateY(-2px)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#64748b";
+                e.currentTarget.style.transform = "translateY(0)";
+              }}
+            >
+              🏠 Voltar para Home
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
