@@ -1,21 +1,89 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { getRandomKeyword, finishGame } from "../services/gameService";
+import LoadingSpinner from "../components/LoadingSpinner";
 
-const PALAVRA_CERTA = "LIMAO";
 const MAX_TENTATIVAS = 5;
 
 export default function Termo() {
   const [tentativas, setTentativas] = useState([]);
   const [entrada, setEntrada] = useState("");
   const [ganhou, setGanhou] = useState(false);
+  const [palavra, setPalavra] = useState("");
+  const [keywordId, setKeywordId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [finishing, setFinishing] = useState(false);
   
   const navigate = useNavigate();
-  const palavra = PALAVRA_CERTA.toUpperCase();
   const gameOver = ganhou || tentativas.length >= MAX_TENTATIVAS;
+
+  useEffect(() => {
+    loadKeyword();
+  }, []);
+
+  const loadKeyword = async () => {
+    setLoading(true);
+    try {
+      const result = await getRandomKeyword();
+      if (result.success && result.keyword) {
+        setPalavra(result.keyword);
+        setKeywordId(result.keywordId);
+      } else {
+        alert(result.message || 'Erro ao carregar palavra. Tente novamente.');
+        navigate("/home");
+      }
+    } catch (error) {
+      console.error('Erro ao carregar palavra:', error);
+      alert('Erro ao carregar palavra. Tente novamente.');
+      navigate("/home");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFinishGame = async (isWin, finalTries = null) => {
+    if (finishing) return;
+    
+    setFinishing(true);
+    try {
+      const tries = finalTries !== null ? finalTries : tentativas.length;
+      const result = await finishGame({
+        keyword: palavra,
+        keywordId,
+        tries,
+        maxTries: MAX_TENTATIVAS,
+        isWin
+      });
+
+      if (result.success) {
+        if (isWin) {
+          alert(`Parabéns! Você acertou a palavra.\nPontuação: ${result.game?.points || 0}\nXP ganho: ${result.game?.xp || 0}`);
+        } else {
+          alert(`Tentativas esgotadas. A palavra era: ${palavra}.\nXP ganho: ${result.game?.xp || 0}`);
+        }
+        setTimeout(() => {
+          navigate("/home");
+        }, 2000);
+      } else {
+        alert(result.message || 'Erro ao salvar resultado do jogo.');
+        setTimeout(() => {
+          navigate("/home");
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Erro ao finalizar jogo:', error);
+      alert('Erro ao salvar resultado do jogo.');
+      setTimeout(() => {
+        navigate("/home");
+      }, 2000);
+    } finally {
+      setFinishing(false);
+    }
+  };
 
   const verificarTentativa = (e) => {
     if (e && e.preventDefault) e.preventDefault();
-    if (gameOver) return;
+    if (gameOver || !palavra) return;
     if (entrada.length !== palavra.length) return;
 
     const tentativa = entrada.toUpperCase();
@@ -24,7 +92,6 @@ export default function Termo() {
 
     const resultado = Array(palavra.length).fill(null);
 
-    // marca verdes
     for (let i = 0; i < palavra.length; i++) {
       if (tentativa[i] === palavra[i]) {
         resultado[i] = { letra: tentativa[i], cor: "green" };
@@ -32,7 +99,6 @@ export default function Termo() {
       }
     }
 
-    // marca amarelos e cinza
     for (let i = 0; i < palavra.length; i++) {
       if (resultado[i]) continue;
       const ch = tentativa[i];
@@ -48,22 +114,70 @@ export default function Termo() {
     setTentativas(novas);
     setEntrada("");
 
-  if (resultado.every((r) => r.cor === "green")) {
-    setGanhou(true);
-    alert("Parabéns! Você acertou a palavra.");
-    setTimeout(() => {
-      navigate("/home");
-    }, 2000);
-    return;
+    if (resultado.every((r) => r.cor === "green")) {
+      setGanhou(true);
+      handleFinishGame(true, novas.length);
+      return;
+    }
+
+    if (novas.length >= MAX_TENTATIVAS) {
+      handleFinishGame(false, novas.length);
+      return;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          backgroundColor: "#f1f5f9",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: 24,
+          padding: 20,
+        }}
+      >
+        <LoadingSpinner size="lg" text="Carregando palavra..." />
+      </div>
+    );
   }
 
-  if (novas.length >= MAX_TENTATIVAS) {
-    alert(`Tentativas esgotadas. A palavra era: ${palavra}.`);
-    setTimeout(() => {
-      navigate("/home");
-    }, 2000);
+  if (!palavra) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          backgroundColor: "#f1f5f9",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: 24,
+          padding: 20,
+        }}
+      >
+        <p>Erro ao carregar palavra. Tente novamente.</p>
+        <button
+          onClick={() => navigate("/home")}
+          style={{
+            backgroundColor: "#3b82f6",
+            color: "#fff",
+            padding: "12px 24px",
+            borderRadius: 12,
+            border: "none",
+            cursor: "pointer",
+            fontSize: 16,
+            fontWeight: 600,
+          }}
+        >
+          Voltar para Home
+        </button>
+      </div>
+    );
   }
-  };
 
   return (
     <div
@@ -81,17 +195,22 @@ export default function Termo() {
     >
       {/* Botão Voltar para Home */}
       <button
-        onClick={() => navigate("/home")}
+        onClick={() => {
+          if (!finishing) {
+            navigate("/home");
+          }
+        }}
+        disabled={finishing}
         style={{
           position: "absolute",
           top: 24,
           left: 24,
-          backgroundColor: "#3b82f6",
+          backgroundColor: finishing ? "#9ca3af" : "#3b82f6",
           color: "#fff",
           padding: "12px 24px",
           borderRadius: 12,
           border: "none",
-          cursor: "pointer",
+          cursor: finishing ? "not-allowed" : "pointer",
           fontSize: 16,
           fontWeight: 600,
           boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
@@ -102,14 +221,18 @@ export default function Termo() {
           zIndex: 10,
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = "#2563eb";
-          e.currentTarget.style.transform = "translateY(-2px)";
-          e.currentTarget.style.boxShadow = "0 6px 16px rgba(59, 130, 246, 0.4)";
+          if (!finishing) {
+            e.currentTarget.style.backgroundColor = "#2563eb";
+            e.currentTarget.style.transform = "translateY(-2px)";
+            e.currentTarget.style.boxShadow = "0 6px 16px rgba(59, 130, 246, 0.4)";
+          }
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = "#3b82f6";
-          e.currentTarget.style.transform = "translateY(0)";
-          e.currentTarget.style.boxShadow = "0 4px 12px rgba(59, 130, 246, 0.3)";
+          if (!finishing) {
+            e.currentTarget.style.backgroundColor = "#3b82f6";
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "0 4px 12px rgba(59, 130, 246, 0.3)";
+          }
         }}
       >
         ← Voltar para Home
@@ -224,14 +347,14 @@ export default function Termo() {
         />
         <button
           type="submit"
-          disabled={gameOver}
+          disabled={gameOver || finishing}
           style={{
-            backgroundColor: "#3b82f6",
+            backgroundColor: finishing ? "#9ca3af" : "#3b82f6",
             color: "#fff",
             border: "none",
             padding: "12px 24px",
             borderRadius: 8,
-            cursor: gameOver ? "not-allowed" : "pointer",
+            cursor: (gameOver || finishing) ? "not-allowed" : "pointer",
             boxShadow: "0 8px 24px rgba(59,130,246,0.18)",
             fontSize: 16,
             fontWeight: 600,
@@ -240,19 +363,19 @@ export default function Termo() {
             maxWidth: 220,
           }}
           onMouseEnter={(e) => {
-            if (!gameOver) {
+            if (!gameOver && !finishing) {
               e.currentTarget.style.backgroundColor = "#2563eb";
               e.currentTarget.style.transform = "translateY(-2px)";
             }
           }}
           onMouseLeave={(e) => {
-            if (!gameOver) {
+            if (!gameOver && !finishing) {
               e.currentTarget.style.backgroundColor = "#3b82f6";
               e.currentTarget.style.transform = "none";
             }
           }}
         >
-          Enviar
+          {finishing ? "Salvando..." : "Enviar"}
         </button>
       </form>
     </div>

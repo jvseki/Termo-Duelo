@@ -9,8 +9,12 @@ api.interceptors.request.use((config) => {
   try {
     const token = localStorage.getItem('termo_duelo_session_token');
     if (token) {
-      config.headers = config.headers || {};
-      config.headers.Authorization = `Bearer ${token}`;
+      if (!config.headers) {
+        config.headers = {};
+      }
+      if (!config.headers.Authorization) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
   } catch (_) {}
   return config;

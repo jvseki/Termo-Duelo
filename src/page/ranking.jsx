@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { getRanking } from "../services/gameService";
 import { theme } from "../styles/theme";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 export default function Ranking() {
   const [rankingData, setRankingData] = useState([]);
@@ -18,37 +20,22 @@ export default function Ranking() {
     loadRankingData();
   }, [user, navigate]);
 
-  const loadRankingData = () => {
+  const loadRankingData = async () => {
     setLoading(true);
-    
-    // Simular carregamento de dados
-    setTimeout(() => {
-      const allUsers = JSON.parse(localStorage.getItem('termo_duelo_users') || '[]');
-      
-      // Gerar dados de ranking baseados nos usuários existentes
-      const ranking = allUsers.map((user, index) => ({
-        id: user.id,
-        name: user.name,
-        avatar: user.avatar,
-        points: Math.floor(Math.random() * 2000) + 500, // Pontos aleatórios para demonstração
-        gamesPlayed: Math.floor(Math.random() * 200) + 50,
-        winRate: Math.floor(Math.random() * 40) + 60, // 60-100%
-        streak: Math.floor(Math.random() * 15) + 1,
-        lastPlayed: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString()
-      }));
-
-      // Ordenar por pontos
-      ranking.sort((a, b) => b.points - a.points);
-      
-      // Adicionar posição
-      const rankingWithPosition = ranking.map((player, index) => ({
-        ...player,
-        position: index + 1
-      }));
-
-      setRankingData(rankingWithPosition);
+    try {
+      const result = await getRanking();
+      if (result.success && result.ranking) {
+        setRankingData(result.ranking);
+      } else {
+        console.error('Erro ao carregar ranking:', result.message);
+        setRankingData([]);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar ranking:', error);
+      setRankingData([]);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   const getInitials = (name) => {
@@ -166,8 +153,11 @@ export default function Ranking() {
           <div style={styles.rankingContainer}>
             {loading ? (
               <div style={styles.loadingContainer}>
-                <div style={styles.loadingSpinner}></div>
-                <p style={styles.loadingText}>Carregando ranking...</p>
+                <LoadingSpinner size="lg" text="Carregando ranking..." />
+              </div>
+            ) : rankingData.length === 0 ? (
+              <div style={styles.loadingContainer}>
+                <p style={styles.loadingText}>Nenhum jogador no ranking ainda.</p>
               </div>
             ) : (
               <>
@@ -200,7 +190,7 @@ export default function Ranking() {
                         </p>
                       </div>
                       <div style={styles.rankingStreak}>
-                        🔥 {player.streak}
+                        ⚡ {player.xp} XP
                       </div>
                     </div>
                   ))}
@@ -446,7 +436,11 @@ const styles = {
     borderTop: `4px solid ${theme.colors.primary.main}`,
     borderRadius: "50%",
     animation: "spin 1s linear infinite",
-    marginBottom: theme.spacing[4]
+    marginBottom: theme.spacing[4],
+    "@keyframes spin": {
+      "0%": { transform: "rotate(0deg)" },
+      "100%": { transform: "rotate(360deg)" }
+    }
   },
   loadingText: {
     fontSize: theme.typography.fontSize.base,
