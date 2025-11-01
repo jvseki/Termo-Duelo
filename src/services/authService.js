@@ -280,9 +280,30 @@ export const getCurrentUserData = () => {
  * Busca dados do usuário no backend
  * @returns {object} - { success: boolean, message: string, user?: object }
  */
-export const fetchUserData = async () => {
+export const getUserData = async () => {
   try {
-    const response = await api.get('/api/auth/user');
+    const currentUser = getCurrentUser();
+    if (!currentUser || !currentUser.id) {
+      return {
+        success: false,
+        message: 'Usuário não está autenticado'
+      };
+    }
+
+    const token = localStorage.getItem(STORAGE_KEYS.SESSION_TOKEN);
+    if (!token) {
+      return {
+        success: false,
+        message: 'Token de autenticação não encontrado'
+      };
+    }
+
+    const response = await api.get('/api/auth/user', {
+      headers: {
+        'x-caller-id': currentUser.id.toString()
+      }
+    });
+
     const { user } = response.data;
     
     const mappedUser = {
@@ -290,26 +311,34 @@ export const fetchUserData = async () => {
       name: user.nickname,
       email: user.email,
       avatar: user.avatar || null,
-      status: user.status
+      status: user.status ? {
+        points: user.status.points || 0,
+        wins: user.status.wins || 0,
+        loses: user.status.loses || 0,
+        xp: user.status.xp || 0,
+        games: user.status.games || 0
+      } : null
     };
-
-    // Atualizar dados no localStorage
-    const token = localStorage.getItem(STORAGE_KEYS.SESSION_TOKEN);
-    saveCurrentUser(mappedUser, token);
 
     return {
       success: true,
-      message: 'Dados do usuário carregados com sucesso!',
+      message: response.data.message || 'Dados do usuário obtidos com sucesso',
       user: mappedUser
     };
   } catch (error) {
-    console.error('Fetch user data error:', error);
     const apiMessage = error?.response?.data?.message;
-    const apiError = error?.response?.data?.error;
+    const status = error?.response?.status;
+    
+    if (status === 401) {
+      return {
+        success: false,
+        message: 'Sessão expirada. Por favor, faça login novamente.'
+      };
+    }
     
     return {
       success: false,
-      message: apiMessage || apiError || 'Erro ao carregar dados do usuário'
+      message: apiMessage || 'Erro ao obter dados do usuário'
     };
   }
 };
@@ -395,6 +424,7 @@ export default {
   login,
   logout,
   getCurrentUserData,
+  getUserData,
   updateUser,
   fetchUserData,
   isAuthenticated

@@ -3,6 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { getGradientBackground, theme } from "../styles/theme";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { getUserData } from "../services/authService";
+import { getRanking } from "../services/gameService";
+import { getFriends, addFriend, acceptFriend, removeFriend, getPendingRequests, getSentRequests } from "../services/friendService";
+import api from "../services/api";
 import esqueleto from "../assets/esqueleto.png";
 import robo from "../assets/robo.png";
 import roqueira from "../assets/roqueira.png";
@@ -27,6 +31,13 @@ export default function Home() {
   const [editAvatar, setEditAvatar] = useState(null);
   const [friendEmail, setFriendEmail] = useState("");
   const [friends, setFriends] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [sentRequests, setSentRequests] = useState([]);
+  const [loadingFriends, setLoadingFriends] = useState(true);
+  const [userData, setUserData] = useState(null);
+  const [loadingUserData, setLoadingUserData] = useState(true);
+  const [rankingData, setRankingData] = useState([]);
+  const [loadingRanking, setLoadingRanking] = useState(true);
   
   const { user, logout, updateUser, loading } = useAuth();
   const navigate = useNavigate();
@@ -41,10 +52,66 @@ export default function Home() {
     if (user) {
       setEditName(user.name);
       setEditAvatar(user.avatar || null);
-    
-      loadFriends();
+      loadFriendsData();
+      loadUserData();
+      loadRanking();
     }
   }, [user]);
+
+  const loadUserData = async () => {
+    setLoadingUserData(true);
+    try {
+      const result = await getUserData();
+      if (result.success && result.user) {
+        setUserData(result.user);
+      } else if (result.message?.includes('Sessão expirada') || result.message?.includes('Token')) {
+        console.error('Erro de autenticação:', result.message);
+        const logoutResult = await logout();
+        if (logoutResult.success) {
+          navigate("/");
+        }
+      } else {
+        console.error('Erro ao carregar dados do usuário:', result.message);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados do usuário:', error);
+      if (error?.response?.status === 401) {
+        const logoutResult = await logout();
+        if (logoutResult.success) {
+          navigate("/");
+        }
+      }
+    } finally {
+      setLoadingUserData(false);
+    }
+  };
+
+  const loadRanking = async () => {
+    setLoadingRanking(true);
+    try {
+      const result = await getRanking();
+      if (result.success && result.ranking) {
+        setRankingData(result.ranking);
+      } else {
+        console.error('Erro ao carregar ranking:', result.message);
+        setRankingData([]);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar ranking:', error);
+      setRankingData([]);
+    } finally {
+      setLoadingRanking(false);
+    }
+  };
+
+  const getMedalIcon = (position) => {
+    switch (position) {
+      case 1: return "🥇";
+      case 2: return "🥈";
+      case 3: return "🥉";
+      default: return `#${position}`;
+    }
+  };
 
   // Fechar dropdown quando clicar fora
   useEffect(() => {
@@ -60,22 +127,46 @@ export default function Home() {
     };
   }, [showProfileDropdown]);
 
-  const loadFriends = () => {
+  const loadFriendsData = async () => {
+    setLoadingFriends(true);
     try {
-      const savedFriends = localStorage.getItem(`friends_${user?.id}`);
-      if (savedFriends) {
-        setFriends(JSON.parse(savedFriends));
+      const [friendsResult, pendingResult, sentResult] = await Promise.all([
+        getFriends(),
+        getPendingRequests(),
+        getSentRequests()
+      ]);
+
+      if (friendsResult.success) {
+        setFriends(friendsResult.friends || []);
+      } else {
+        console.error('Erro ao carregar amigos:', friendsResult.message);
+        setFriends([]);
+      }
+
+      if (pendingResult.success) {
+        const requests = pendingResult.requests || [];
+        console.log('Solicitações pendentes recebidas:', requests);
+        console.log('Quantidade de solicitações:', requests.length);
+        setPendingRequests(requests);
+      } else {
+        console.error('Erro ao carregar solicitações pendentes:', pendingResult);
+        console.error('Detalhes do erro:', pendingResult.message);
+        setPendingRequests([]);
+      }
+
+      if (sentResult.success) {
+        setSentRequests(sentResult.requests || []);
+      } else {
+        console.error('Erro ao carregar solicitações enviadas:', sentResult.message);
+        setSentRequests([]);
       }
     } catch (error) {
-      console.error('Erro ao carregar amigos:', error);
-    }
-  };
-
-  const saveFriends = (friendsList) => {
-    try {
-      localStorage.setItem(`friends_${user.id}`, JSON.stringify(friendsList));
-    } catch (error) {
-      console.error('Erro ao salvar amigos:', error);
+      console.error('Erro ao carregar dados de amigos:', error);
+      setFriends([]);
+      setPendingRequests([]);
+      setSentRequests([]);
+    } finally {
+      setLoadingFriends(false);
     }
   };
 
@@ -115,50 +206,67 @@ export default function Home() {
       return;
     }
 
-  
-    if (friends.some(friend => friend.email === friendEmail.toLowerCase())) {
-      alert("Este usuário já está na sua lista de amigos!");
-      return;
-    }
-
-  
     if (friendEmail.toLowerCase() === user.email) {
       alert("Você não pode adicionar a si mesmo como amigo!");
       return;
     }
 
-  
-    const allUsers = JSON.parse(localStorage.getItem('termo_duelo_users') || '[]');
-    const friendUser = allUsers.find(u => u.email === friendEmail.toLowerCase());
+    try {
+      const response = await api.get(`/api/auth/search?email=${encodeURIComponent(friendEmail)}`);
+      const friendUser = response.data.user;
+      
+      if (!friendUser) {
+        alert("Usuário não encontrado! Verifique o email digitado.");
+        return;
+      }
 
-    if (!friendUser) {
-      alert("Usuário não encontrado! Verifique o email digitado.");
-      return;
+      const friendId = friendUser.id;
+      const result = await addFriend(friendId);
+      
+      if (result.success) {
+        setFriendEmail("");
+        setShowAddFriend(false);
+        alert(result.message || 'Solicitação de amizade enviada com sucesso!');
+        loadFriendsData();
+      } else {
+        alert(result.message || 'Erro ao enviar solicitação de amizade');
+      }
+    } catch (error) {
+      console.error('Erro ao adicionar amigo:', error);
+      const errorMessage = error?.response?.data?.message || 'Usuário não encontrado! Verifique o email digitado.';
+      alert(errorMessage);
     }
-
-
-    const newFriend = {
-      id: friendUser.id,
-      name: friendUser.name,
-      email: friendUser.email,
-      addedAt: new Date().toISOString()
-    };
-
-    const updatedFriends = [...friends, newFriend];
-    setFriends(updatedFriends);
-    saveFriends(updatedFriends);
-    
-    setFriendEmail("");
-    setShowAddFriend(false);
-    alert(`Amigo ${friendUser.name} adicionado com sucesso!`);
   };
 
-  const handleRemoveFriend = (friendId) => {
+  const handleAcceptFriend = async (friendId) => {
+    try {
+      const result = await acceptFriend(friendId);
+      if (result.success) {
+        alert(result.message || 'Solicitação de amizade aceita com sucesso!');
+        loadFriendsData();
+      } else {
+        alert(result.message || 'Erro ao aceitar solicitação de amizade');
+      }
+    } catch (error) {
+      console.error('Erro ao aceitar amigo:', error);
+      alert('Erro ao aceitar solicitação de amizade');
+    }
+  };
+
+  const handleRemoveFriend = async (friendId) => {
     if (window.confirm("Tem certeza que deseja remover este amigo?")) {
-      const updatedFriends = friends.filter(friend => friend.id !== friendId);
-      setFriends(updatedFriends);
-      saveFriends(updatedFriends);
-      alert("Amigo removido com sucesso!");
+      try {
+        const result = await removeFriend(friendId);
+        if (result.success) {
+          alert(result.message || 'Amigo removido com sucesso!');
+          loadFriendsData();
+        } else {
+          alert(result.message || 'Erro ao remover amigo');
+        }
+      } catch (error) {
+        console.error('Erro ao remover amigo:', error);
+        alert('Erro ao remover amigo');
+      }
     }
   };
 
@@ -376,32 +484,71 @@ export default function Home() {
             </div>
           </form>
           
-          {friends.length > 0 && (
-              <div style={styles.existingFriendsSection}>
-                <div style={styles.sectionDivider}></div>
-                <h3 style={styles.sectionTitle}>Seus Amigos ({friends.length})</h3>
-                <div style={styles.friendsListContainer}>
-              {friends.map(friend => (
-                    <div key={friend.id} style={styles.professionalFriendCard}>
-                      <div style={styles.friendAvatarContainer}>
-                    <div style={styles.friendAvatar}>
-                      {getInitials(friend.name)}
+          {pendingRequests.length > 0 && (
+            <div style={styles.existingFriendsSection}>
+              <div style={styles.sectionDivider}></div>
+              <h3 style={styles.sectionTitle}>Solicitações Pendentes ({pendingRequests.length})</h3>
+              <div style={styles.friendsListContainer}>
+                {pendingRequests.map(request => (
+                  <div key={request.id} style={styles.professionalFriendCard}>
+                    <div style={styles.friendAvatarContainer}>
+                      <div style={styles.friendAvatar}>
+                        {request.avatar ? (
+                          <img src={request.avatar} alt="Avatar" style={styles.avatarImage} />
+                        ) : (
+                          <span>{getInitials(request.nickname)}</span>
+                        )}
+                      </div>
                     </div>
+                    <div style={styles.friendDetails}>
+                      <h4 style={styles.friendName}>{request.nickname}</h4>
+                      <p style={styles.friendEmail}>{request.email}</p>
                     </div>
-                      <div style={styles.friendDetails}>
-                        <h4 style={styles.friendName}>{friend.name}</h4>
-                        <p style={styles.friendEmail}>{friend.email}</p>
+                    <div style={styles.friendActions}>
+                            <button
+                              onClick={() => handleAcceptFriend(request.id)}
+                              style={styles.acceptFriendButton}
+                              title="Aceitar solicitação"
+                            >
+                              ✓ Aceitar
+                            </button>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => handleRemoveFriend(friend.id)}
-                        style={styles.removeFriendButton}
-                    title="Remover amigo"
-                  >
-                        <span style={styles.removeIcon}>×</span>
-                  </button>
-                </div>
-              ))}
-                </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {friends.length > 0 && (
+            <div style={styles.existingFriendsSection}>
+              <div style={styles.sectionDivider}></div>
+              <h3 style={styles.sectionTitle}>Seus Amigos ({friends.length})</h3>
+              <div style={styles.friendsListContainer}>
+                {friends.map(friend => (
+                  <div key={friend.id} style={styles.professionalFriendCard}>
+                    <div style={styles.friendAvatarContainer}>
+                      <div style={styles.friendAvatar}>
+                        {friend.avatar ? (
+                          <img src={friend.avatar} alt="Avatar" style={styles.avatarImage} />
+                        ) : (
+                          <span>{getInitials(friend.nickname)}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={styles.friendDetails}>
+                      <h4 style={styles.friendName}>{friend.nickname}</h4>
+                      <p style={styles.friendEmail}>{friend.email}</p>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveFriend(friend.id)}
+                      style={styles.removeFriendButton}
+                      title="Remover amigo"
+                    >
+                      <span style={styles.removeIcon}>×</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
           </div>
@@ -428,46 +575,95 @@ export default function Home() {
           </div>
           
           <div style={styles.modalContent}>
-            {friends.length > 0 ? (
-              <div style={styles.friendsListContainer}>
-                {friends.map(friend => (
-                  <div key={friend.id} style={styles.professionalFriendCard}>
-                    <div style={styles.friendAvatarContainer}>
-                      <div style={styles.friendAvatar}>
-                        {getInitials(friend.name)}
-                      </div>
-                    </div>
-                    <div style={styles.friendDetails}>
-                      <h4 style={styles.friendName}>{friend.name}</h4>
-                      <p style={styles.friendEmail}>{friend.email}</p>
-                    </div>
-                    <button
-                      onClick={() => handleRemoveFriend(friend.id)}
-                      style={styles.removeFriendButton}
-                      title="Remover amigo"
-                    >
-                      <span style={styles.removeIcon}>×</span>
-                    </button>
-                  </div>
-                ))}
+            {loadingFriends ? (
+              <div style={styles.loadingContainer}>
+                <LoadingSpinner size="sm" text="Carregando..." />
               </div>
             ) : (
-              <div style={styles.emptyState}>
-                <div style={styles.emptyStateIcon}>👥</div>
-                <h3 style={styles.emptyStateTitle}>Nenhum amigo adicionado</h3>
-                <p style={styles.emptyStateDescription}>
-                  Comece adicionando amigos para jogar juntos!
-                </p>
-                <button 
-                  style={styles.primaryButton}
-                  onClick={() => {
-                    setShowFriendsList(false);
-                    setShowAddFriend(true);
-                  }}
-                >
-                  Adicionar Primeiro Amigo
-                </button>
-              </div>
+              <>
+                {pendingRequests.length > 0 && (
+                  <div style={styles.requestsSection}>
+                    <h3 style={styles.sectionTitle}>Solicitações Pendentes ({pendingRequests.length})</h3>
+                    <div style={styles.friendsListContainer}>
+                      {pendingRequests.map(request => (
+                        <div key={request.id} style={styles.professionalFriendCard}>
+                          <div style={styles.friendAvatarContainer}>
+                            <div style={styles.friendAvatar}>
+                              {request.avatar ? (
+                                <img src={request.avatar} alt="Avatar" style={styles.avatarImage} />
+                              ) : (
+                                <span>{getInitials(request.nickname)}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div style={styles.friendDetails}>
+                            <h4 style={styles.friendName}>{request.nickname}</h4>
+                            <p style={styles.friendEmail}>{request.email}</p>
+                          </div>
+                          <div style={styles.friendActions}>
+                            <button
+                              onClick={() => handleAcceptFriend(request.id)}
+                              style={styles.acceptFriendButton}
+                              title="Aceitar solicitação"
+                            >
+                              ✓ Aceitar
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {friends.length > 0 ? (
+                  <div style={styles.friendsSection}>
+                    <h3 style={styles.sectionTitle}>Meus Amigos ({friends.length})</h3>
+                    <div style={styles.friendsListContainer}>
+                      {friends.map(friend => (
+                        <div key={friend.id} style={styles.professionalFriendCard}>
+                          <div style={styles.friendAvatarContainer}>
+                            <div style={styles.friendAvatar}>
+                              {friend.avatar ? (
+                                <img src={friend.avatar} alt="Avatar" style={styles.avatarImage} />
+                              ) : (
+                                <span>{getInitials(friend.nickname)}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div style={styles.friendDetails}>
+                            <h4 style={styles.friendName}>{friend.nickname}</h4>
+                            <p style={styles.friendEmail}>{friend.email}</p>
+                          </div>
+                          <button
+                            onClick={() => handleRemoveFriend(friend.id)}
+                            style={styles.removeFriendButton}
+                            title="Remover amigo"
+                          >
+                            <span style={styles.removeIcon}>×</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : pendingRequests.length === 0 && (
+                  <div style={styles.emptyState}>
+                    <div style={styles.emptyStateIcon}>👥</div>
+                    <h3 style={styles.emptyStateTitle}>Nenhum amigo adicionado</h3>
+                    <p style={styles.emptyStateDescription}>
+                      Comece adicionando amigos para jogar juntos!
+                    </p>
+                    <button 
+                      style={styles.primaryButton}
+                      onClick={() => {
+                        setShowFriendsList(false);
+                        setShowAddFriend(true);
+                      }}
+                    >
+                      Adicionar Primeiro Amigo
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
           
@@ -586,27 +782,46 @@ export default function Home() {
               </div>
               <div style={styles.profileInfo}>
                 <h2 style={styles.profileName}>{user.name}</h2>
-                <p style={styles.profileLevel}>Nível 12</p>
-                <p style={styles.profileSequence}>Sequência?</p>
+                <p style={styles.profileLevel}>
+                  {userData?.status ? `Nível ${Math.floor(userData.status.xp / 100) + 1}` : 'Nível 1'}
+                </p>
+                <p style={styles.profileSequence}>
+                  {userData?.status ? `${userData.status.wins} vitórias` : 'Sem vitórias'}
+                </p>
               </div>
             </div>
             
             <div style={styles.xpBar}>
-              <div style={styles.xpBarFill}></div>
-              <span style={styles.xpText}>500 XP</span>
+              <div style={{
+                ...styles.xpBarFill,
+                width: userData?.status ? `${Math.min((userData.status.xp % 100) / 100 * 100, 100)}%` : '0%'
+              }}></div>
+              <span style={styles.xpText}>
+                {userData?.status ? `${userData.status.xp} XP` : '0 XP'}
+              </span>
             </div>
             
             <div style={styles.statsGrid}>
               <div style={styles.statCard}>
-              <span style={styles.statNumber}>156</span>
+              <span style={styles.statNumber}>
+                {loadingUserData ? '...' : (userData?.status?.games || 0)}
+              </span>
               <span style={styles.statLabel}>Jogos Jogados</span>
               </div>
               <div style={styles.statCard}>
-              <span style={styles.statNumber}>87%</span>
+              <span style={styles.statNumber}>
+                {loadingUserData ? '...' : (
+                  userData?.status?.games 
+                    ? `${Math.round((userData.status.wins / userData.status.games) * 100)}%` 
+                    : '0%'
+                )}
+              </span>
               <span style={styles.statLabel}>% de Vitória</span>
             </div>
               <div style={styles.statCard}>
-              <span style={styles.statNumber}>1200</span>
+              <span style={styles.statNumber}>
+                {loadingUserData ? '...' : (userData?.status?.points || 0)}
+              </span>
               <span style={styles.statLabel}>Pontuação</span>
             </div>
           </div>
@@ -614,7 +829,7 @@ export default function Home() {
 
           {/* Modos de jogo */}
           <div style={styles.gameModesSection}>
-            <h3 style={styles.sectionTitle}>Modos de Jogo</h3>
+            <h3 style={styles.gameSectionTitle}>Modos de Jogo</h3>
             
             <button style={styles.gameModeButton} onClick={() => navigate('/termo')}>
               <div style={styles.gameModeContent}>
@@ -641,14 +856,136 @@ export default function Home() {
         <div style={styles.rightPanel}>
           {/* Ranking */}
           <div style={styles.rankingCard}>
-            <h3 style={styles.cardTitle}>Ranking</h3>
-            <button 
-              style={styles.rankingButton}
-              onClick={() => navigate("/ranking")}
-            >
-              Ver Ranking Completo
-            </button>
-        </div>
+            <div style={styles.rankingCardHeader}>
+              <h3 style={styles.cardTitle}>🏆 Ranking</h3>
+              <button 
+                style={styles.rankingButton}
+                onClick={() => navigate("/ranking")}
+              >
+                Ver Completo
+              </button>
+            </div>
+            
+            {loadingRanking ? (
+              <div style={styles.rankingLoadingContainer}>
+                <LoadingSpinner size="sm" text="Carregando..." />
+              </div>
+            ) : rankingData.length === 0 ? (
+              <div style={styles.rankingEmptyContainer}>
+                <p style={styles.rankingEmptyText}>Nenhum jogador no ranking ainda.</p>
+              </div>
+            ) : (
+              <div style={styles.rankingList}>
+                {rankingData.slice(0, 5).map((player) => (
+                  <div 
+                    key={player.id} 
+                    style={{
+                      ...styles.rankingListItem,
+                      ...(player.id === user?.id ? styles.rankingListItemCurrent : {})
+                    }}
+                  >
+                    <div style={styles.rankingListPosition}>
+                      {getMedalIcon(player.position)}
+                    </div>
+                    <div style={styles.rankingListAvatar}>
+                      {player.avatar ? (
+                        <img src={player.avatar} alt="Avatar" style={styles.avatarImage} />
+                      ) : (
+                        <span style={styles.avatarInitials}>{getInitials(player.name)}</span>
+                      )}
+                    </div>
+                    <div style={styles.rankingListInfo}>
+                      <div style={styles.rankingListName}>{player.name}</div>
+                      <div style={styles.rankingListStats}>
+                        {player.points} pts
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Lista de Amigos */}
+          <div style={styles.friendsCard}>
+            <div style={styles.friendsCardHeader}>
+              <h3 style={styles.cardTitle}>👥 Amigos</h3>
+              <button 
+                style={styles.friendsButton}
+                onClick={() => setShowFriendsList(true)}
+              >
+                Ver Todos
+              </button>
+            </div>
+            
+            {loadingFriends ? (
+              <div style={styles.friendsLoadingContainer}>
+                <LoadingSpinner size="sm" text="Carregando..." />
+              </div>
+            ) : (
+              <>
+                {pendingRequests.length > 0 && (
+                  <div 
+                    style={styles.friendsPendingSection}
+                    onClick={() => setShowFriendsList(true)}
+                  >
+                    <p style={styles.friendsPendingText}>
+                      🔔 {pendingRequests.length} solicitação{pendingRequests.length > 1 ? 'ões' : ''} pendente{pendingRequests.length > 1 ? 's' : ''}
+                    </p>
+                    <button 
+                      style={styles.friendsPendingButton}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowFriendsList(true);
+                      }}
+                    >
+                      Ver
+                    </button>
+                  </div>
+                )}
+                
+                {friends.length > 0 ? (
+                  <div style={styles.friendsList}>
+                    {friends.slice(0, 5).map((friend) => (
+                      <div 
+                        key={friend.id} 
+                        style={styles.friendsListItem}
+                      >
+                        <div style={styles.friendsListAvatar}>
+                          {friend.avatar ? (
+                            <img src={friend.avatar} alt="Avatar" style={styles.avatarImage} />
+                          ) : (
+                            <span style={styles.avatarInitials}>{getInitials(friend.nickname)}</span>
+                          )}
+                        </div>
+                        <div style={styles.friendsListInfo}>
+                          <div style={styles.friendsListName}>{friend.nickname}</div>
+                        </div>
+                      </div>
+                    ))}
+                    {friends.length > 5 && (
+                      <button 
+                        style={styles.friendsViewMoreButton}
+                        onClick={() => setShowFriendsList(true)}
+                      >
+                        Ver mais ({friends.length - 5})
+                      </button>
+                    )}
+                  </div>
+                ) : pendingRequests.length === 0 && (
+                  <div style={styles.friendsEmptyContainer}>
+                    <p style={styles.friendsEmptyText}>Nenhum amigo ainda.</p>
+                    <button 
+                      style={styles.friendsAddButton}
+                      onClick={() => setShowAddFriend(true)}
+                    >
+                      + Adicionar Amigo
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
 
         </div>
       </div>
@@ -1372,7 +1709,7 @@ const styles = {
     flexDirection: "column",
     gap: theme.spacing[4]
   },
-  sectionTitle: {
+  gameSectionTitle: {
     fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.gray[900],
@@ -1418,31 +1755,284 @@ const styles = {
     backgroundColor: theme.colors.white,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing[6],
-    boxShadow: theme.shadows.lg,
-    textAlign: "center"
+    boxShadow: theme.shadows.lg
+  },
+  rankingCardHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: theme.spacing[4]
   },
   cardTitle: {
     fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.gray[900],
-    margin: 0,
-    marginBottom: theme.spacing[4]
+    margin: 0
   },
   rankingButton: {
-    width: "100%",
     backgroundColor: theme.colors.primary.main,
     color: theme.colors.white,
     border: "none",
     borderRadius: theme.borderRadius.base,
-    padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
+    padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
     cursor: "pointer",
-    fontSize: theme.typography.fontSize.sm,
+    fontSize: theme.typography.fontSize.xs,
     fontWeight: theme.typography.fontWeight.medium,
     transition: "all 0.3s ease",
     "&:hover": {
       backgroundColor: theme.colors.primary.dark,
       transform: "translateY(-1px)",
       boxShadow: theme.shadows.md
+    }
+  },
+  rankingLoadingContainer: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    padding: theme.spacing[4]
+  },
+  rankingEmptyContainer: {
+    padding: theme.spacing[4],
+    textAlign: "center"
+  },
+  rankingEmptyText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.gray[500],
+    margin: 0
+  },
+  rankingList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: theme.spacing[2]
+  },
+  rankingListItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: theme.spacing[2],
+    padding: theme.spacing[2],
+    backgroundColor: theme.colors.surface.tertiary,
+    borderRadius: theme.borderRadius.base,
+    transition: "all 0.2s ease"
+  },
+  rankingListItemCurrent: {
+    backgroundColor: theme.colors.primary.main + "15",
+    border: `1px solid ${theme.colors.primary.main}`
+  },
+  rankingListPosition: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.gray[700],
+    minWidth: "28px",
+    textAlign: "center"
+  },
+  rankingListAvatar: {
+    width: "32px",
+    height: "32px",
+    borderRadius: "50%",
+    backgroundColor: theme.colors.primary.main,
+    color: theme.colors.white,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
+    flexShrink: 0,
+    overflow: "hidden"
+  },
+  rankingListInfo: {
+    flex: 1,
+    minWidth: 0
+  },
+  rankingListName: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.gray[900],
+    margin: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap"
+  },
+  rankingListStats: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.gray[600],
+    margin: 0
+  },
+  friendsCard: {
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing[6],
+    boxShadow: theme.shadows.lg,
+    marginTop: theme.spacing[6]
+  },
+  friendsCardHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: theme.spacing[4]
+  },
+  friendsButton: {
+    backgroundColor: theme.colors.primary.main,
+    color: theme.colors.white,
+    border: "none",
+    borderRadius: theme.borderRadius.base,
+    padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
+    cursor: "pointer",
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.medium,
+    transition: "all 0.3s ease",
+    "&:hover": {
+      backgroundColor: theme.colors.primary.dark,
+      transform: "translateY(-1px)",
+      boxShadow: theme.shadows.md
+    }
+  },
+  friendsLoadingContainer: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    padding: theme.spacing[4]
+  },
+  friendsPendingSection: {
+    backgroundColor: theme.colors.warning + "20",
+    padding: theme.spacing[2],
+    borderRadius: theme.borderRadius.base,
+    marginBottom: theme.spacing[3],
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+    "&:hover": {
+      backgroundColor: theme.colors.warning + "30"
+    }
+  },
+  friendsPendingText: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.warning,
+    margin: 0,
+    fontWeight: theme.typography.fontWeight.medium
+  },
+  friendsPendingButton: {
+    backgroundColor: theme.colors.warning,
+    color: theme.colors.white,
+    border: "none",
+    borderRadius: theme.borderRadius.base,
+    padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
+    cursor: "pointer",
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.medium,
+    transition: "all 0.2s ease",
+    "&:hover": {
+      backgroundColor: "#d97706"
+    }
+  },
+  friendsList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: theme.spacing[2]
+  },
+  friendsListItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: theme.spacing[2],
+    padding: theme.spacing[2],
+    backgroundColor: theme.colors.surface.tertiary,
+    borderRadius: theme.borderRadius.base,
+    transition: "all 0.2s ease",
+    "&:hover": {
+      backgroundColor: theme.colors.surface.secondary
+    }
+  },
+  friendsListAvatar: {
+    width: "32px",
+    height: "32px",
+    borderRadius: "50%",
+    backgroundColor: theme.colors.primary.main,
+    color: theme.colors.white,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
+    flexShrink: 0,
+    overflow: "hidden"
+  },
+  friendsListInfo: {
+    flex: 1,
+    minWidth: 0
+  },
+  friendsListName: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.gray[900],
+    margin: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap"
+  },
+  friendsViewMoreButton: {
+    width: "100%",
+    backgroundColor: theme.colors.gray[100],
+    color: theme.colors.gray[700],
+    border: "none",
+    borderRadius: theme.borderRadius.base,
+    padding: theme.spacing[2],
+    cursor: "pointer",
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.medium,
+    transition: "all 0.3s ease",
+    marginTop: theme.spacing[2],
+    "&:hover": {
+      backgroundColor: theme.colors.gray[200]
+    }
+  },
+  friendsEmptyContainer: {
+    padding: theme.spacing[4],
+    textAlign: "center"
+  },
+  friendsEmptyText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.gray[500],
+    margin: 0,
+    marginBottom: theme.spacing[3]
+  },
+  friendsAddButton: {
+    backgroundColor: theme.colors.primary.main,
+    color: theme.colors.white,
+    border: "none",
+    borderRadius: theme.borderRadius.base,
+    padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
+    cursor: "pointer",
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.medium,
+    transition: "all 0.3s ease",
+    "&:hover": {
+      backgroundColor: theme.colors.primary.dark
+    }
+  },
+  requestsSection: {
+    marginBottom: theme.spacing[4]
+  },
+  friendsSection: {
+    marginTop: theme.spacing[4]
+  },
+  friendActions: {
+    display: "flex",
+    gap: theme.spacing[2]
+  },
+  acceptFriendButton: {
+    backgroundColor: "#10b981",
+    color: theme.colors.white,
+    border: "none",
+    borderRadius: theme.borderRadius.base,
+    padding: `${theme.spacing[1]} ${theme.spacing[2]}`,
+    cursor: "pointer",
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.bold,
+    transition: "all 0.3s ease",
+    "&:hover": {
+      backgroundColor: "#059669",
+      transform: "scale(1.05)"
     }
   },
   avatarImage: {
@@ -1540,64 +2130,6 @@ const styles = {
     color: theme.colors.white,
     fontWeight: theme.typography.fontWeight.bold
   },
-  friendsList: {
-    marginTop: theme.spacing[6],
-    paddingTop: theme.spacing[4],
-    borderTop: `1px solid ${theme.colors.white}20`
-  },
-  friendsTitle: {
-    color: theme.colors.white,
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.bold,
-    marginBottom: theme.spacing[4],
-    textAlign: "center"
-  },
-  friendItem: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: theme.spacing[3],
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    borderRadius: theme.borderRadius.base,
-    marginBottom: theme.spacing[2],
-    transition: "background-color 0.3s ease"
-  },
-  friendInfo: {
-    display: "flex",
-    alignItems: "center",
-    gap: theme.spacing[3]
-  },
-  friendAvatar: {
-    width: "40px",
-    height: "40px",
-    borderRadius: "50%",
-    backgroundColor: theme.colors.secondary.main,
-    color: theme.colors.white,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.bold
-  },
-  friendName: {
-    color: theme.colors.white,
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.medium
-  },
-  friendEmail: {
-    color: theme.colors.white,
-    fontSize: theme.typography.fontSize.sm,
-    opacity: 0.7
-  },
-  removeButton: {
-    background: "none",
-    border: "none",
-    color: theme.colors.danger,
-    cursor: "pointer",
-    fontSize: "16px",
-    padding: theme.spacing[1],
-    borderRadius: theme.borderRadius.sm,
-    transition: "background-color 0.3s ease"
-  }
+  
 };
 

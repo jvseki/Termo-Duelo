@@ -46,6 +46,7 @@ export default function Register() {
     
     // Validar formulário
     const validation = validateRegistrationForm(formData);
+    console.log(validation);
     if (!validation.isValid) {
       setErrors(validation.errors);
       setPasswordStrength(validation.passwordStrength);
